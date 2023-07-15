@@ -1,0 +1,3 @@
+add_subdirectory(mpu6050_basic)
+add_subdirectory(mpu6050_kalman1)
+add_subdirectory(mpu_test)
