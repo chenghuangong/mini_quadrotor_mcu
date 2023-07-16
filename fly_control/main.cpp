@@ -5,34 +5,30 @@
 #include <string>
 #include "communicator.h"
 
-struct quad_motor
-{
-    uint motor1_;
-    uint motor2_;
-    uint motor3_;
-    uint motor4_;
-
-    uint thrust_value_[4] = {0,0,0,0};
-};
+// define motor as same as mpu6050 direction
+#define MOTOR1_PIN 13
+#define MOTOR2_PIN 10
+#define MOTOR3_PIN 11
+#define MOTOR4_PIN 12
 
 #define SERVER_ADDR "192.168.31.17"
 #define SERVER_PORT 12800
 
+
 // define motor mosfet pin
-const uint MOTOR_1 = 10;
-const uint MOTOR_2 = 11;
-const uint MOTOR_3 = 12;
-const uint MOTOR_4 = 13;
+const uint MOTOR_1 = MOTOR1_PIN;
+const uint MOTOR_2 = MOTOR2_PIN;
+const uint MOTOR_3 = MOTOR3_PIN;
+const uint MOTOR_4 = MOTOR4_PIN;
 
 quad_motor motors;
 std::string cmd_buffer;
 
 // only need call function below to set thrust, use offset
-void set_motor_thrust(quad_motor& motors, int* thrust_offset);
+void set_motor_thrust_v2(quad_motor& motors, int* thrust);
 
 void initialize_motor(quad_motor& motors);
 void output_motor_thrust(quad_motor& motors);   // do set motor thrust to pwm
-void on_uart_rx();
 void on_uart_rx_v2();
 void handle_cmd();
 
@@ -40,10 +36,10 @@ void handle_cmd();
 bool send_motor_data_callback(repeating_timer_t *rt)
 {
     printf("{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[%d,%d,%d,%d]}", 
-        motors.thrust_value_[0],
-        motors.thrust_value_[1],
-        motors.thrust_value_[2],
-        motors.thrust_value_[3]);
+        motors.total_output_[0],
+        motors.total_output_[1],
+        motors.total_output_[2],
+        motors.total_output_[3]);
     return true;    
 }
 
@@ -60,6 +56,7 @@ int main()
     sleep_ms(10000);
 
     // start push gyro data to server
+    // use pid controll motor
     communicator comm{SERVER_ADDR, SERVER_PORT};
     comm.start_push_sensor_data();
 
@@ -69,6 +66,7 @@ int main()
     motors.motor3_ = MOTOR_3;
     motors.motor4_ = MOTOR_4;
     initialize_motor(motors);
+    comm.motor_ = &motors;
 
     // start data timer
     repeating_timer motor_data_timer;
@@ -123,31 +121,7 @@ void initialize_motor(quad_motor& motors)
     pwm_init(slice_num_4, &config, true);
 }
 
-void set_motor_thrust(quad_motor& motors, int* thrust_offset)
-{
-    int temp_thrust[4];
-    bool is_valid = true;
 
-    // add thrust offset and original thrust value, save to temp thrust value
-    for (size_t i = 0; i < 4; i++)
-    {
-        temp_thrust[i] = motors.thrust_value_[i] + thrust_offset[i];
-        if (temp_thrust[i] < 0 || temp_thrust[i] > 255)
-        {
-            is_valid = false;
-            break;
-        }
-    }
-    
-    // if temp thrust value is valid, then write to motor thrust value
-    if (is_valid)
-    {
-        for (size_t i = 0; i < 4; i++)
-        {
-            motors.thrust_value_[i] = temp_thrust[i];
-        }
-    }
-}
 
 void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 {
@@ -164,7 +138,7 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
     // if temp thrust value is valid, then write to motor thrust value
     for (size_t i = 0; i < 4; i++)
     {
-        motors.thrust_value_[i] = thrust[i];
+        motors.total_output_[i] = thrust[i];
     }
 
     printf("set successful\n");
@@ -172,42 +146,10 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 
 void output_motor_thrust(quad_motor& motors)
 {
-    pwm_set_gpio_level(motors.motor1_, motors.thrust_value_[0] * motors.thrust_value_[0]);
-    pwm_set_gpio_level(motors.motor2_, motors.thrust_value_[1] * motors.thrust_value_[1]);
-    pwm_set_gpio_level(motors.motor3_, motors.thrust_value_[2] * motors.thrust_value_[2]);
-    pwm_set_gpio_level(motors.motor4_, motors.thrust_value_[3] * motors.thrust_value_[3]);
-}
-
-void on_uart_rx()
-{
-    std::string value;
-    while (uart_is_readable(uart0)) 
-    {
-        value += uart_getc(uart0);
-    }
-    
-    int number_value = 0;
-
-    if (value.at(0) <= '9' || value.at(0) >= '0' || value.at(0) == '-')
-    {
-        if (value == "10")
-        {
-            number_value = 10;
-        }
-
-        if (value == "-10")
-        {
-            number_value = -10;
-        }
-    }
-
-    if (std::abs(number_value) < 255)
-    {
-        int offset[4] = {number_value, number_value, number_value, number_value};
-        set_motor_thrust(motors, offset);
-    }
-
-    uart_puts(uart0, std::to_string(motors.thrust_value_[0]).c_str());
+    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * motors.total_output_[0]);
+    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * motors.total_output_[1]);
+    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * motors.total_output_[2]);
+    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * motors.total_output_[3]);
 }
 
 

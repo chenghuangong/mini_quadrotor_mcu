@@ -164,11 +164,8 @@ void output_plotter_data_type(int16_t* accel, int16_t* gyro, int16_t* temp)
 
 void output_1Dkalman_filter(kalman_data& kal, int16_t* accel, int16_t* gyro)
 {
-    // TODO calibrate gyro value
-
     kal.sampling_count++;
-
-    
+     
     // 1. set zero point
     if (kal.sampling_count <= 1000)
     {

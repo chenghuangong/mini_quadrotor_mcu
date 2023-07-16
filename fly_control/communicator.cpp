@@ -1,5 +1,11 @@
 #include "communicator.h"
 
+void perform_motor_pid_controll(communicator* comm)
+{
+    // TODO 
+    // PID controll
+}
+
 bool push_sensor_data_callback(repeating_timer_t* rt)
 {
     auto comm = static_cast<communicator*>(rt->user_data);
@@ -16,7 +22,13 @@ bool collect_sensor_data_callback(repeating_timer_t* rt)
     auto comm = static_cast<communicator*>(rt->user_data);
     if (rt->alarm_id == comm->sensor_timer_.alarm_id)
     {
-        comm->sensor_gyro_.mpu6050_read_raw(); // read gyro data
+        comm->sensor_gyro_.mpu6050_read_kalman();
+
+        // apply PID to motor output
+        if (comm->motor_->pid_on)
+        {
+            perform_motor_pid_controll(comm);
+        }
     }
     return true;
 }
@@ -40,8 +52,8 @@ std::string communicator::get_sensor_data()
 {
     auto pressure_data = sensor_pressure_.get_sensor_data();
     auto gyro_data = sensor_gyro_.get_sensor_kalman_data();
-
     auto gyro_raw_data = sensor_gyro_.get_sensor_raw_data();
+
     // std::string msg = "Temperture = " + std::to_string(pressure_data[0]) + ", Pressure = " + std::to_string(pressure_data[1]) + 
     //                   "Accel_X = " + std::to_string(gyro_data[0]) + " , Accel_Y = " + std::to_string(gyro_data[1]) + " , Accel_Z = " + std::to_string(gyro_data[2]) + 
     //                   "Gyro_X = " + std::to_string(gyro_data[3]) + " , Gyro_Y = " + std::to_string(gyro_data[4]) + " , Gyro_Z = " + std::to_string(gyro_data[5]) + 
@@ -53,7 +65,7 @@ std::string communicator::get_sensor_data()
     std::string msg = "{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"gyro\",\"value\":[" + 
                         std::to_string(gyro_data[0]) + "," + 
                         std::to_string(gyro_data[1]) + "," + 
-                        "1," +                                      // yaw
+                        std::to_string(gyro_data[2]) + "," +
                         std::to_string(gyro_raw_data[0]) + "," + 
                         std::to_string(gyro_raw_data[1]) + "," +
                         std::to_string(gyro_raw_data[2]) + "," +

@@ -3,6 +3,13 @@
 #include "rp2040_interface.h"
 #include <math.h>
 
+#define MPU6050_SAMPLING_TIME 0.01  // 采样时间10ms
+#define ACC_SENSITIVITY 16384       // per g
+#define ACC_STD_DEVIATION 3         // °
+#define GYRO_SENSITIVITY 131        // per °/s
+#define GYRO_STD_DEVIATION 4        // °/s
+
+
 class sensor_bmp280
 {
 public:
@@ -44,6 +51,29 @@ private:
     bool is_initialized_ = false;
 };
 
+// ======================================MPU6050======================================
+struct mpu6050_kalman_data
+{
+    double ctrl_matrix = MPU6050_SAMPLING_TIME;         // control matrix
+    double acc_std_deviation = ACC_STD_DEVIATION;
+    double gyro_std_deviation = GYRO_STD_DEVIATION;
+
+    // [roll, pitch]
+    double kalman_angle[2] = {0, 0};                    // angle predicted by kalman fiter, use gyro to calculate
+    double kalman_gain[2] = {0, 0};
+    double prediction_uncertainty[2] = {0, 0};
+    double acc_angle[2] = {0, 0};                       // calculated by accelerometer
+    double yaw_speed = 0;                               // show yaw speed, do not integrate yaw
+    double yaw_angle = 0;
+
+    // optional
+    int sampling_count = 0;
+    int raw_data_sum[6] = {0, 0, 0, 0, 0, 0};
+    int raw_data_offset[6] = {0, 0, 0, 0, 0, 0};
+
+    double temperature = 0;
+};
+
 
 class sensor_mpu6050
 {
@@ -51,40 +81,29 @@ public:
     sensor_mpu6050(i2c_communicator* communicator);
 
 public:
+    void mpu6050_read_kalman();     // read raw and apply kalman filter
     double* get_sensor_raw_data();
+    double* get_sensor_gyro_speed();
     double* get_sensor_kalman_data();
-    double* get_sensor_all_data() {return nullptr;}
-    void mpu6050_read_raw();        // read raw and save, time interval 10ms 
-
+    
 private:
     void init_sensor();
     void init_mpu6050();
-    void apply_kalman_filter(); 
+    void mpu6050_read_raw();        // read raw and save, time interval 10ms
+    void apply_kalman_filter();
+    bool perform_zero_point_calibration(); 
     
 private:
-    struct kalman_data
-    {
-        double integral_time = 0.01;                // 10ms
-        double ctrl_matrix = integral_time;         // control matrix
-        double inter_matrix = 0;                    // intermediate matrix
-
-        // first variable for roll, second variable for pitch
-        double kal_theta[2] = {0, 0};               // theta after kalman fiter, kalman_data[0] = roll, kalman_data[1] = pitch
-        double cal_theta[3] = {0, 0, 0};            // theta cal by acc
-        double prediction_uncertainty[2] = {0, 0};  // predict uncertainty, 
-        double kalman_gain[2] = {0, 0};
-
-        double temperature = 0;
-    };
-
     i2c_communicator* communicator_;
     i2c_inst_t* i2c_inst_;
     bool is_initialized_ = false;
 
     int16_t accel_[3], gyro_[3], temp_;
-    kalman_data kalman_filter_;
-    double raw_data_[7];
-    double kal_data_[4]; // roll, pitch, yaw(暂时没有), temperature
+    int16_t accel_no_offset_[3], gyro_no_offset_[3];
+    mpu6050_kalman_data kalman_filter_;
+    double xyz_acc_gyro_data_[7];   // acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, temperature, raw data with offset
+    double xyz_gyro_speed_[3];      // gyro_x, gyro_y, gyro_z, directly calculate xyz rotation speed, uint °/s
+    double rpy_kalman_data_[4];     // roll, pitch, yaw(integrate gyro_z), temperature
 };
 
 
