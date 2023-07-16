@@ -103,6 +103,8 @@ struct kalman_data
     double kalman_gain[2] = {0, 0};
     double prediction_uncertainty[2] = {0, 0};
     double acc_angle[2] = {0, 0};               // calculated by accelerometer
+    double yaw_speed = 0;                       // show yaw speed, do not integrate yaw
+    double yaw_angle = 0;
 
     // optional
     int sampling_count = 0;
@@ -166,7 +168,8 @@ void output_1Dkalman_filter(kalman_data& kal, int16_t* accel, int16_t* gyro)
 
     kal.sampling_count++;
 
-    // set zero point
+    
+    // 1. set zero point
     if (kal.sampling_count <= 1000)
     {
         for (size_t i = 0; i < 3; i++)
@@ -183,7 +186,7 @@ void output_1Dkalman_filter(kalman_data& kal, int16_t* accel, int16_t* gyro)
             }
 
             // acc_z is different, acc_z = g, 1g = 16384
-            kal.raw_data_offset[2] = int(kal.raw_data_sum[2] / 1000.0) - 16384;
+            kal.raw_data_offset[2] = int(kal.raw_data_sum[2] / 1000.0) - ACC_SENSITIVITY;
         }
         printf("%d\n", kal.sampling_count);
         return;
@@ -200,12 +203,12 @@ void output_1Dkalman_filter(kalman_data& kal, int16_t* accel, int16_t* gyro)
     kal.acc_angle[0] = atan(accel[1] / pow(accel[0] * accel[0] + accel[2] * accel[2], 0.5)) * (180 / M_PI);  // roll
     kal.acc_angle[1] = atan(-accel[0] / pow(accel[1] * accel[1] + accel[2] * accel[2], 0.5)) * (180 / M_PI); // pitch
 
-    // use kalman fiter to calculate roll and pitch
+    // 2. use kalman fiter to calculate roll and pitch
     for (size_t i = 0; i < 2; i++)
     {
         // 1. predict the current state of the system
         // kalman_angle[0] is roll, gyro[0] = X direction gyro 
-        kal.kalman_angle[i] = kal.kalman_angle[i] + (gyro[i] / GYRO_SENSITIVITY) * kal.ctrl_matrix;
+        kal.kalman_angle[i] = kal.kalman_angle[i] + (gyro[i] / double(GYRO_SENSITIVITY)) * kal.ctrl_matrix;
 
         // 2. calculate the uncertainty of the prediction
         kal.prediction_uncertainty[i] = kal.prediction_uncertainty[i] + pow(SAMPLING_TIME * kal.gyro_std_deviation, 2);
@@ -220,7 +223,10 @@ void output_1Dkalman_filter(kalman_data& kal, int16_t* accel, int16_t* gyro)
         kal.prediction_uncertainty[i] = (1 - kal.kalman_gain[i]) * kal.prediction_uncertainty[i];
     }
 
-    printf("%.2f\t%.2f\t%.2f\t%.2f\t%d\n", kal.acc_angle[0] + 45, kal.acc_angle[1] + 45, kal.kalman_angle[0], kal.kalman_angle[1], 
+    // get yaw speed
+    kal.yaw_speed = gyro[2] / double(GYRO_SENSITIVITY);
+    kal.yaw_angle = kal.yaw_angle + SAMPLING_TIME * kal.yaw_speed;
+    printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%d\n", kal.acc_angle[0] + 45, kal.acc_angle[1] + 45, kal.kalman_angle[0], kal.kalman_angle[1], kal.yaw_speed, kal.yaw_angle,
             kal.sampling_count);
 
 }

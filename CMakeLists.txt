@@ -15,6 +15,7 @@ pico_sdk_init()
 
 # 添加子目录，每一个子目录下面都要添加CMakeLists.txt文件
 add_subdirectory(sensor_test)
+add_subdirectory(fly_control)
 
 # 添加编译器选项
 add_compile_options(-Wall
