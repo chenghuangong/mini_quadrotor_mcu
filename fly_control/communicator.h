@@ -57,6 +57,7 @@ public:
 public:
     // motor
     quad_motor* motor_ = nullptr;
+    sensor_mpu6050 sensor_gyro_;
 
 private:
     esp01s esp_;
@@ -66,7 +67,7 @@ private:
 
     // sensor
     sensor_bmp280 sensor_pressure_;
-    sensor_mpu6050 sensor_gyro_;
+    
 };
 
 

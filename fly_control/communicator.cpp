@@ -2,8 +2,24 @@
 
 void perform_motor_pid_controll(communicator* comm)
 {
-    // TODO 
-    // PID controll
+    // quad_motor* motor = comm->motor_;
+
+    // if (!motor->pid_on)
+    // {
+    //     return;
+    // }
+    // // TODO 
+    // // PID controll
+    
+    // auto gyro_raw_data = comm->sensor_gyro_.get_sensor_raw_data();
+    // double gyro_z = gyro_raw_data[5] / double(GYRO_SENSITIVITY);
+
+    // // start PID controller
+    // double p_value = 0.001;
+    // double error = -1 * (p_value * gyro_z);
+
+    // motor->yaw_input = error;
+    // motor->convert_to_total_output();
 }
 
 bool push_sensor_data_callback(repeating_timer_t* rt)
