@@ -22,6 +22,8 @@ const uint MOTOR_2 = MOTOR2_PIN;
 const uint MOTOR_3 = MOTOR3_PIN;
 const uint MOTOR_4 = MOTOR4_PIN;
 
+const uint PWM_STEP = PWM_COUNTS / PWM_MOTOR_MAX;
+
 quad_motor motors;
 std::string cmd_buffer;
 size_t cmd_char_buffer_length;
@@ -62,11 +64,13 @@ int main()
 {
     stdio_init_all();
     sleep_ms(10000);
-
+    // printf("start\n");
     // start push gyro data to server
     // use pid controll motor
     communicator comm{SERVER_ADDR, SERVER_PORT};
+    // printf("initialize communicator\n");
     comm.start_push_sensor_data();
+    // printf("start communicator\n");
 
     // initialize motor
     motors.motor1_ = MOTOR_1;
@@ -74,6 +78,7 @@ int main()
     motors.motor3_ = MOTOR_3;
     motors.motor4_ = MOTOR_4;
     initialize_motor(motors);
+    // printf("initialize motor\n");
     comm.motor_ = &motors;
 
     // start data timer
@@ -81,6 +86,7 @@ int main()
     add_repeating_timer_ms(899, &send_motor_data_callback, nullptr, &motor_data_timer);
     repeating_timer heart_beat_timer;
     add_repeating_timer_ms(5123, &heart_beat_callback, nullptr, &heart_beat_timer);
+    // printf("start send data\n");
 
     // set uart recv callback, uart0 has already initialized in communicator, so just set callback
     // irq_set_exclusive_handler(UART0_IRQ, on_uart_rx);
@@ -92,8 +98,7 @@ int main()
     while (1)
     {
         output_motor_thrust(motors);
-        sleep_ms(100);
-        tight_loop_contents();
+        sleep_ms(10);
     }
 
     return 0;
@@ -136,7 +141,7 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
     // add thrust offset and original thrust value, save to temp thrust value
     for (size_t i = 0; i < 4; i++)
     {
-        if (thrust[i] < 0 || thrust[i] > 255)
+        if (thrust[i] < 0 || thrust[i] > 2000)
         {
             return;
         }
@@ -152,10 +157,17 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 
 void output_motor_thrust(quad_motor& motors)
 {
-    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * motors.total_output_[0]);
-    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * motors.total_output_[1]);
-    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * motors.total_output_[2]);
-    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * motors.total_output_[3]);
+    // convert duty cycle to linear, from 0 - 2000
+
+    // pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * motors.total_output_[0]);
+    // pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * motors.total_output_[1]);
+    // pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * motors.total_output_[2]);
+    // pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * motors.total_output_[3]);
+
+    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * PWM_STEP);
+    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * PWM_STEP);
+    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * PWM_STEP);
+    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * PWM_STEP);
 }
 
 
@@ -273,14 +285,14 @@ void handle_cmd_v2()
         motors.pid_on = false;
         for (size_t i = 0; i < 4; i++)
         {
-            thrust[i] = cmd_char[3 + i];
+            thrust[i] = pow(cmd_char[3 + i], 2) / PWM_STEP;  // CONVERT TO 0-2000
         }
         set_motor_thrust_v2(motors, thrust);
         break;
     case 0x02:
         // set throttle
         motors.pid_on = true;
-        motors.throttle = cmd_char[3];
+        motors.throttle = pow(cmd_char[3], 2) / PWM_STEP;
         motors.convert_to_total_output();
     break;
     case 0x03:break;

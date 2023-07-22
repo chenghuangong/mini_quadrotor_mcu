@@ -233,6 +233,13 @@ void sensor_mpu6050::apply_kalman_filter()
     kalman_filter_.yaw_angle = kalman_filter_.yaw_angle + MPU6050_SAMPLING_TIME * kalman_filter_.yaw_speed;
 
     kalman_filter_.temperature = (temp_ / 340.0) + 36.53;
+
+    // set roll and pitch speed
+    for (size_t i = 0; i < 2; i++)
+    {
+        kalman_filter_.kalman_angel_speed[i] = (kalman_filter_.kalman_angle[i] - kalman_filter_.kalman_previous_angel[i]) / MPU6050_SAMPLING_TIME;
+        kalman_filter_.kalman_previous_angel[i] = kalman_filter_.kalman_angle[i];
+    } 
 }
 
 
@@ -249,13 +256,18 @@ double* sensor_mpu6050::get_sensor_raw_data()
 }
 
 
-// [roll with kalman filter, pitch with kalman filter, yaw(integrate gyro_z), temperature]
+// [roll with kalman filter, pitch with kalman filter, yaw(integrate gyro_z), temperature, kalman roll speed, kalman pitch speed]
 double* sensor_mpu6050::get_sensor_kalman_data()
 {
     rpy_kalman_data_[0] = kalman_filter_.kalman_angle[0];
     rpy_kalman_data_[1] = kalman_filter_.kalman_angle[1];
     rpy_kalman_data_[2] = kalman_filter_.yaw_angle;
     rpy_kalman_data_[3] = kalman_filter_.temperature;
+
+    rpy_kalman_data_[4] = kalman_filter_.kalman_angel_speed[0];
+    rpy_kalman_data_[5] = kalman_filter_.kalman_angel_speed[1];
+    rpy_kalman_data_[6] = kalman_filter_.yaw_speed;
+
     return rpy_kalman_data_;
 }
 
