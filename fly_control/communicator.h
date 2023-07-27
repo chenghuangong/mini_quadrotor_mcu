@@ -48,6 +48,10 @@ struct quad_motor
     double i_yaw = 0;
     double d_yaw = 0;
 
+    double p_z = 0;
+    double i_z = 0;
+    double d_z = 0;
+
     
     // use throttle roll pitch yaw input value to calculate total output,
     // then apply total output to four motors 

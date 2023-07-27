@@ -2,7 +2,7 @@
 #include <pico/stdlib.h>
 #include <hardware/uart.h>
 #include <hardware/pwm.h>
-#include <string>
+#include <string.h>
 #include "communicator.h"
 
 // define motor as same as mpu6050 direction
@@ -37,6 +37,7 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust);
 void initialize_motor(quad_motor& motors);
 void output_motor_thrust(quad_motor& motors);   // do set motor thrust to pwm
 void on_uart_rx_v2();
+float get_float_from_cmd(unsigned char*);
 void check_buffer_cmd();
 void handle_cmd();
 void handle_cmd_v2();
@@ -45,11 +46,17 @@ void print_char_to_number(unsigned char* data, size_t length);
 // timer callback
 bool send_motor_data_callback(repeating_timer_t *rt)
 {
-    printf("{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[%d,%d,%d,%d]}", 
-        motors.total_output_[0],
-        motors.total_output_[1],
-        motors.total_output_[2],
-        motors.total_output_[3]);
+    // printf("{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[%d,%d,%d,%d]}", 
+    //     motors.total_output_[0],
+    //     motors.total_output_[1],
+    //     motors.total_output_[2],
+    //     motors.total_output_[3]);
+    std::string msg = "{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[" + 
+        std::to_string(motors.total_output_[0]) + "," + 
+        std::to_string(motors.total_output_[1]) + "," + 
+        std::to_string(motors.total_output_[2]) + "," + 
+        std::to_string(motors.total_output_[3]) + "]}";
+    uart_puts(uart0, msg.c_str());
     return true;    
 }
 
@@ -189,6 +196,7 @@ void on_uart_rx_v2()
         // if there is a cmd in buffer, handle it
         // print_char_to_number(cmd_char_buffer, cmd_char_buffer_length);
         check_buffer_cmd();
+        printf("check buffer finished\n");
     } else if (cmd_char_buffer_length >= CMD_BUFFER_SIZE)
     {
         // buffer is full, empty buffer
@@ -225,13 +233,35 @@ void check_buffer_cmd()
                     }
                     handle_cmd_v2();          
                 }
-                cmd_char_buffer_length = 0;
+
+                // modified
+                cmd_char_buffer_length = cmd_char_buffer_length - i - 8;
+                if (cmd_char_buffer_length > 0)
+                {
+
+                    memcpy(cmd_char_buffer, cmd_char_buffer + i + 8, cmd_char_buffer_length);
+                    // printf("after memcpy: \n");
+                    // print_char_to_number(cmd_char_buffer, cmd_char_buffer_length);
+                }
+                // if there is a complete command, call function again, dangerous!
+                if (cmd_char_buffer_length >= 8)
+                {
+                    check_buffer_cmd();
+                }  
                 return;
             }
             // lack of data, break
             break;
         }
     }   
+}
+
+
+float get_float_from_cmd(unsigned char* cmd)
+{
+    float f;
+    memcpy(&f, cmd + 3, sizeof(f));
+    return f;
 }
 
 void handle_cmd()
@@ -270,6 +300,23 @@ void handle_cmd()
 // cmd = 0x03: set roll, only use value1
 // cmd = 0x04: set pitch, only use value1
 // cmd = 0x05: set yaw, only use value1
+
+// cmd = 0x06: set z p, 数据类型float
+// cmd = 0x07: set z i, 数据类型float
+// cmd = 0x08: set z d, 数据类型float
+
+// cmd = 0x09: set roll p, 数据类型float
+// cmd = 0x0A: set roll i, 数据类型float
+// cmd = 0x0B: set roll d, 数据类型float
+
+// cmd = 0x0C: set pitch p, 数据类型float
+// cmd = 0x0D: set pitch i, 数据类型float
+// cmd = 0x0E: set pitch d, 数据类型float
+
+// cmd = 0x0F: set yaw p, 数据类型float
+// cmd = 0x10: set yaw i, 数据类型float
+// cmd = 0x11: set yaw d, 数据类型float
+
 // AA BB CMD VALUE1 VALUE2 VALUE3 VALUE4 CHECKSUM
 void handle_cmd_v2()
 {
@@ -298,6 +345,21 @@ void handle_cmd_v2()
     case 0x03:break;
     case 0x04:break;
     case 0x05:break;
+    case 0x06:break;
+    case 0x07:break;
+    case 0x08:break;
+
+    case 0x09: motors.p_roll = get_float_from_cmd(cmd_char); break;
+    case 0x0A: motors.i_roll = get_float_from_cmd(cmd_char); break;
+    case 0x0B: motors.d_roll = get_float_from_cmd(cmd_char); break;
+
+    case 0x0C: motors.p_pitch = get_float_from_cmd(cmd_char); break;
+    case 0x0D: motors.i_pitch = get_float_from_cmd(cmd_char); break;
+    case 0x0E: motors.d_pitch = get_float_from_cmd(cmd_char); break;
+    
+    case 0x0F: motors.p_yaw = get_float_from_cmd(cmd_char); break;
+    case 0x10: motors.i_yaw = get_float_from_cmd(cmd_char); break;
+    case 0x11: motors.d_yaw = get_float_from_cmd(cmd_char); break;
     default:
         break;
     }

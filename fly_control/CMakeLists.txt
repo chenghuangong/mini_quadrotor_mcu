@@ -7,4 +7,4 @@ pico_add_extra_outputs(fly_control)
 # enable
 pico_enable_stdio_usb(fly_control 0)
 # disable
-pico_enable_stdio_uart(fly_control 1)
+pico_enable_stdio_uart(fly_control 0)
