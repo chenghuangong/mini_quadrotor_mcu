@@ -8,23 +8,25 @@ void perform_motor_pid_controll(communicator* comm)
     {
         return;
     }
-    // TODO 
-    // PID controll
+
+
     
     auto gyro_raw_data = comm->sensor_gyro_.get_sensor_raw_data();
     auto gyro_data = comm->sensor_gyro_.get_sensor_kalman_data();
 
     double yaw_value = gyro_data[2];
-    double gyro_z = gyro_raw_data[5] / double(GYRO_SENSITIVITY);
+    double gyro_z = gyro_raw_data[5] / GYRO_SENSITIVITY;
 
     // start PID controller, yaw_set_deg is offset
     double e_roll =  motor->p_roll * gyro_data[4] + motor->i_roll * (motor->roll_set_deg - gyro_data[0]);
     
-    double e_pitch = motor->p_pitch * gyro_data[5] + motor->i_roll * (motor->roll_set_deg - gyro_data[1]);
+    double e_pitch = motor->p_pitch * gyro_data[5] + motor->i_pitch * (motor->pitch_set_deg - gyro_data[1]);
 
     double e_yaw = motor->p_yaw * gyro_z + motor->i_yaw * (yaw_value - motor->yaw_set_deg);
 
     motor->update_input_error(0, e_roll, e_pitch, e_yaw);
+
+    // comm->sampling_count++;
 }
 
 bool push_sensor_data_callback(repeating_timer_t* rt)

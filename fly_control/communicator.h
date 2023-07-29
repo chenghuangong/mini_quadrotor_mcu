@@ -119,7 +119,11 @@ public:
     // sensor使用了i2c_communicator进行初始化，这里需要修改掉，将sensor放到i2c_communicator之前无法运行
     // 虽然应该是没有关系的
     sensor_bmp280 sensor_pressure_;
-    sensor_mpu6050 sensor_gyro_;  
+    sensor_mpu6050 sensor_gyro_; 
+
+
+    // only for test, test sampling time
+    // int sampling_count = 0; 
  
 };
 
