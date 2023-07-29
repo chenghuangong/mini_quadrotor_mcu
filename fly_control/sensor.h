@@ -1,13 +1,15 @@
 #ifndef SENSOR_H_
 #define SENSOR_H_
 #include "rp2040_interface.h"
-#include <math.h>
+#include <cmath>
 
-#define MPU6050_SAMPLING_TIME 0.01  // 采样时间10ms
-#define ACC_SENSITIVITY 16384       // per g
-#define ACC_STD_DEVIATION 3         // °
-#define GYRO_SENSITIVITY 131        // per °/s
-#define GYRO_STD_DEVIATION 4        // °/s
+// #define MPU6050_SAMPLING_TIME 0.01  // 采样时间10ms
+#define MPU6050_SAMPLING_TIME 0.004    // 采样时间4ms
+#define ACC_SENSITIVITY 16384          // per g
+#define ACC_STD_DEVIATION 3            // °
+#define GYRO_SENSITIVITY 65.5          // per °/s
+#define GYRO_STD_DEVIATION 4           // °/s
+
 
 
 class sensor_bmp280
@@ -94,6 +96,7 @@ public:
 private:
     void init_sensor();
     void init_mpu6050();
+    void mpu6050_set_low_pass_filter();
     void mpu6050_read_raw();        // read raw and save, time interval 10ms
     void apply_kalman_filter();
     bool perform_zero_point_calibration(); 

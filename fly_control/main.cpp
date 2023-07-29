@@ -67,6 +67,12 @@ bool heart_beat_callback(repeating_timer_t *rt)
     return true;    
 }
 
+bool output_motor_thrust_callback(repeating_timer_t* rt)
+{
+    output_motor_thrust(motors);
+    return true;
+}
+
 int main()
 {
     stdio_init_all();
@@ -101,11 +107,14 @@ int main()
     irq_set_enabled(UART0_IRQ, true);
     uart_set_irq_enables(uart0, true, false);
 
+    repeating_timer motor_output_timer;
+    add_repeating_timer_ms(4, &output_motor_thrust_callback, nullptr, &motor_output_timer);
 
     while (1)
     {
-        output_motor_thrust(motors);
-        sleep_ms(10);
+        tight_loop_contents();
+        // output_motor_thrust(motors);
+        // sleep_ms(4);
     }
 
     return 0;
@@ -126,8 +135,8 @@ void initialize_motor(quad_motor& motors)
 
     // get pwm config
     pwm_config config = pwm_get_default_config();
-    pwm_config_set_wrap(&config, 0xffff);
-    pwm_config_set_clkdiv(&config, 40.f);
+    pwm_config_set_wrap(&config, 0xffff);   // set duty cycle
+    pwm_config_set_clkdiv(&config, 40.f);   // set 125Mhz / 40 = 3.125MHz
     
     // set duty cycle
     pwm_set_gpio_level(motors.motor1_, 0);

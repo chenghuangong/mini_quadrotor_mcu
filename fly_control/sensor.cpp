@@ -151,6 +151,22 @@ void sensor_mpu6050::init_mpu6050()
     // There are a load more options to set up the device in different ways that could be added here
     uint8_t buf[] = {0x6B, 0x00};
     i2c_write_blocking(i2c_inst_, MPU6050_ADDR, buf, 2, false);
+
+    sleep_ms(100);
+
+    mpu6050_set_low_pass_filter();
+}
+
+
+void sensor_mpu6050::mpu6050_set_low_pass_filter()
+{
+    // enable low pass filter
+    uint8_t buf1[] = {0x1A, 0x05};
+    i2c_write_blocking(i2c_default, MPU6050_ADDR, buf1, 2, false);
+
+    // set sensitivity to 65.5
+    uint8_t buf2[] = {0x1B, 0x08};
+    i2c_write_blocking(i2c_default, MPU6050_ADDR, buf2, 2, false);  
 }
 
 
@@ -213,7 +229,7 @@ void sensor_mpu6050::apply_kalman_filter()
     for (size_t i = 0; i < 2; i++)
     {
         // 1. predict the current state of the system
-        kalman_filter_.kalman_angle[i] = kalman_filter_.kalman_angle[i] + (gyro_[i] / double(GYRO_SENSITIVITY)) * kalman_filter_.ctrl_matrix;
+        kalman_filter_.kalman_angle[i] = kalman_filter_.kalman_angle[i] + (gyro_[i] / GYRO_SENSITIVITY) * kalman_filter_.ctrl_matrix;
 
         // 2. calculate the uncertainty of the prediction
         kalman_filter_.prediction_uncertainty[i] = kalman_filter_.prediction_uncertainty[i] + pow(MPU6050_SAMPLING_TIME * kalman_filter_.gyro_std_deviation, 2);
@@ -229,7 +245,7 @@ void sensor_mpu6050::apply_kalman_filter()
     }
 
     // get yaw speed
-    kalman_filter_.yaw_speed = gyro_[2] / double(GYRO_SENSITIVITY);
+    kalman_filter_.yaw_speed = gyro_[2] / GYRO_SENSITIVITY;
     kalman_filter_.yaw_angle = kalman_filter_.yaw_angle + MPU6050_SAMPLING_TIME * kalman_filter_.yaw_speed;
 
     kalman_filter_.temperature = (temp_ / 340.0) + 36.53;
@@ -276,7 +292,7 @@ double* sensor_mpu6050::get_sensor_gyro_speed()
 {
     for (size_t i = 0; i < 3; i++)
     {
-        xyz_gyro_speed_[i] = gyro_[i] / double(GYRO_SENSITIVITY); 
+        xyz_gyro_speed_[i] = gyro_[i] / GYRO_SENSITIVITY; 
     }     
     return xyz_gyro_speed_;
 }
