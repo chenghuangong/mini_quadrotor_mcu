@@ -69,6 +69,7 @@ struct mpu6050_kalman_data
     // calculate roll and pitch by kalman filter
     double kalman_previous_angel[2] = {0, 0};
     double kalman_angel_speed[2] = {0, 0};
+    double kalman_previous_angel_speed[2] = {0, 0};
 
     double yaw_speed = 0;                               // show yaw speed, do not integrate yaw
     double yaw_angle = 0;
@@ -111,7 +112,7 @@ private:
     mpu6050_kalman_data kalman_filter_;
     double xyz_acc_gyro_data_[7];   // acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, temperature, raw data with offset
     double xyz_gyro_speed_[3];      // gyro_x, gyro_y, gyro_z, directly calculate xyz rotation speed, uint °/s
-    double rpy_kalman_data_[7];     // roll, pitch, yaw(integrate gyro_z), temperature, roll_speed, pitch_speed, yaw_speed
+    double rpy_kalman_data_[9];     // roll, pitch, yaw(integrate gyro_z), temperature, roll_speed, pitch_speed, yaw_speed, previous roll_speed, previous pitch_speed
 };
 
 

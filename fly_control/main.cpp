@@ -22,6 +22,11 @@ const uint MOTOR_2 = MOTOR2_PIN;
 const uint MOTOR_3 = MOTOR3_PIN;
 const uint MOTOR_4 = MOTOR4_PIN;
 
+const double MOTOR_COE_1 = 0.96;
+const double MOTOR_COE_2 = 1;
+const double MOTOR_COE_3 = 1;
+const double MOTOR_COE_4 = 0.96;
+
 const uint PWM_STEP = PWM_COUNTS / PWM_MOTOR_MAX;
 
 quad_motor motors;
@@ -29,6 +34,8 @@ std::string cmd_buffer;
 size_t cmd_char_buffer_length;
 unsigned char cmd_char[8];
 unsigned char cmd_char_buffer[CMD_BUFFER_SIZE];
+
+int motor_set_count = 0;
 
 
 // only need call function below to set thrust, use offset
@@ -62,14 +69,20 @@ bool send_motor_data_callback(repeating_timer_t *rt)
 
 bool heart_beat_callback(repeating_timer_t *rt)
 {
+    auto comm = static_cast<communicator*>(rt->user_data);
+
     std::string msg = "{\"msg_type\":\"heart_beat\",\"dev_type\":\"drone\"}";
     uart_puts(uart0, msg.c_str());
+
+    // printf("The sampling count is: %d\nThe motor count is: %d\n", comm->sampling_count, motor_set_count);
+
     return true;    
 }
 
 bool output_motor_thrust_callback(repeating_timer_t* rt)
 {
     output_motor_thrust(motors);
+    // motor_set_count++;
     return true;
 }
 
@@ -98,7 +111,7 @@ int main()
     repeating_timer motor_data_timer;
     add_repeating_timer_ms(899, &send_motor_data_callback, nullptr, &motor_data_timer);
     repeating_timer heart_beat_timer;
-    add_repeating_timer_ms(5123, &heart_beat_callback, nullptr, &heart_beat_timer);
+    add_repeating_timer_ms(5001, &heart_beat_callback, &comm, &heart_beat_timer);
     // printf("start send data\n");
 
     // set uart recv callback, uart0 has already initialized in communicator, so just set callback
@@ -157,7 +170,7 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
     // add thrust offset and original thrust value, save to temp thrust value
     for (size_t i = 0; i < 4; i++)
     {
-        if (thrust[i] < 0 || thrust[i] > 2000)
+        if (thrust[i] < 0 || thrust[i] > PWM_MOTOR_MAX)
         {
             return;
         }
@@ -173,17 +186,17 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 
 void output_motor_thrust(quad_motor& motors)
 {
-    // convert duty cycle to linear, from 0 - 2000
+    // convert duty cycle to linear, from 0 - PWM_MOTOR_MAX
 
     // pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * motors.total_output_[0]);
     // pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * motors.total_output_[1]);
     // pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * motors.total_output_[2]);
     // pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * motors.total_output_[3]);
 
-    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * PWM_STEP);
-    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * PWM_STEP);
-    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * PWM_STEP);
-    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * PWM_STEP);
+    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * PWM_STEP * MOTOR_COE_1);
+    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * PWM_STEP * MOTOR_COE_2);
+    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * PWM_STEP * MOTOR_COE_3);
+    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * PWM_STEP * MOTOR_COE_4);
 }
 
 
@@ -191,11 +204,16 @@ void on_uart_rx_v2()
 {
     // printf("uart_rx called\n");
 
+    uint temp_length = cmd_char_buffer_length;
+
     while (uart_is_readable(uart0) && cmd_char_buffer_length < (CMD_BUFFER_SIZE - 1)) 
     {
         cmd_char_buffer[cmd_char_buffer_length++] = uart_getc(uart0);
         printf("%d ", cmd_char_buffer[cmd_char_buffer_length - 1]);
     }
+
+    // no data received
+    if (temp_length == cmd_char_buffer_length) return;
 
     // printf("\nuart_rx finished\n");
 
@@ -205,7 +223,7 @@ void on_uart_rx_v2()
         // if there is a cmd in buffer, handle it
         // print_char_to_number(cmd_char_buffer, cmd_char_buffer_length);
         check_buffer_cmd();
-        printf("check buffer finished\n");
+        // printf("check buffer finished\n");
     } else if (cmd_char_buffer_length >= CMD_BUFFER_SIZE)
     {
         // buffer is full, empty buffer
@@ -341,7 +359,7 @@ void handle_cmd_v2()
         motors.pid_on = false;
         for (size_t i = 0; i < 4; i++)
         {
-            thrust[i] = pow(cmd_char[3 + i], 2) / PWM_STEP;  // CONVERT TO 0-2000
+            thrust[i] = pow(cmd_char[3 + i], 2) / PWM_STEP;  // CONVERT TO 0 - PWM_MOTOR_MAX
         }
         set_motor_thrust_v2(motors, thrust);
         break;

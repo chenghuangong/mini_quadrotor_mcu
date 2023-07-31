@@ -5,7 +5,8 @@
 #include "sensor.h"
 
 #define PWM_COUNTS 65535
-#define PWM_MOTOR_MAX 2000
+// #define PWM_MOTOR_MAX 2000
+#define PWM_MOTOR_MAX 65000
 
 
 struct quad_motor
@@ -18,8 +19,8 @@ struct quad_motor
     uint motor3_;
     uint motor4_;
 
-    int total_output_[4] = {0, 0, 0, 0};            // from 0-2000
-    double total_output_pid_[4] = {0, 0, 0, 0};     // from 0-2000
+    int total_output_[4] = {0, 0, 0, 0};            // from 0 - PWM_MOTOR_MAX
+    double total_output_pid_[4] = {0, 0, 0, 0};     // from 0 - PWM_MOTOR_MAX
     
     int throttle = 0;     // set by controller
     double roll_set_deg = 0;  // set by controller     
@@ -80,7 +81,7 @@ struct quad_motor
         // convert double output to int
         for (size_t i = 0; i < 4; i++)
         {
-            if (total_output_pid_[i] > 0 && total_output_pid_[i] < 2000)
+            if (total_output_pid_[i] > 0 && total_output_pid_[i] < PWM_MOTOR_MAX)
             {
                 total_output_[i] = static_cast<int>(total_output_pid_[i]);
             }
@@ -123,7 +124,7 @@ public:
 
 
     // only for test, test sampling time
-    // int sampling_count = 0; 
+    int sampling_count = 0; 
  
 };
 

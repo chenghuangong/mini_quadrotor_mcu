@@ -253,6 +253,7 @@ void sensor_mpu6050::apply_kalman_filter()
     // set roll and pitch speed
     for (size_t i = 0; i < 2; i++)
     {
+        kalman_filter_.kalman_previous_angel_speed[i] = kalman_filter_.kalman_angel_speed[i];
         kalman_filter_.kalman_angel_speed[i] = (kalman_filter_.kalman_angle[i] - kalman_filter_.kalman_previous_angel[i]) / MPU6050_SAMPLING_TIME;
         kalman_filter_.kalman_previous_angel[i] = kalman_filter_.kalman_angle[i];
     } 
@@ -283,6 +284,9 @@ double* sensor_mpu6050::get_sensor_kalman_data()
     rpy_kalman_data_[4] = kalman_filter_.kalman_angel_speed[0];
     rpy_kalman_data_[5] = kalman_filter_.kalman_angel_speed[1];
     rpy_kalman_data_[6] = kalman_filter_.yaw_speed;
+
+    rpy_kalman_data_[7] = kalman_filter_.kalman_previous_angel_speed[0];
+    rpy_kalman_data_[8] = kalman_filter_.kalman_previous_angel_speed[1];
 
     return rpy_kalman_data_;
 }

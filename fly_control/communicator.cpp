@@ -18,15 +18,15 @@ void perform_motor_pid_controll(communicator* comm)
     double gyro_z = gyro_raw_data[5] / GYRO_SENSITIVITY;
 
     // start PID controller, yaw_set_deg is offset
-    double e_roll =  motor->p_roll * gyro_data[4] + motor->i_roll * (motor->roll_set_deg - gyro_data[0]);
+    double e_roll =  motor->p_roll * gyro_data[4] + motor->i_roll * (motor->roll_set_deg - gyro_data[0]) + motor->d_roll * (gyro_data[4] - gyro_data[7]) / MPU6050_SAMPLING_TIME;
     
-    double e_pitch = motor->p_pitch * gyro_data[5] + motor->i_pitch * (motor->pitch_set_deg - gyro_data[1]);
+    double e_pitch = motor->p_pitch * gyro_data[5] + motor->i_pitch * (motor->pitch_set_deg - gyro_data[1]) + motor->d_pitch * (gyro_data[5] - gyro_data[8]) / MPU6050_SAMPLING_TIME;
 
     double e_yaw = motor->p_yaw * gyro_z + motor->i_yaw * (yaw_value - motor->yaw_set_deg);
 
     motor->update_input_error(0, e_roll, e_pitch, e_yaw);
 
-    // comm->sampling_count++;
+    comm->sampling_count++;
 }
 
 bool push_sensor_data_callback(repeating_timer_t* rt)
@@ -68,7 +68,7 @@ communicator::communicator(const std::string& addr, const uint16_t& port)
 void communicator::start_push_sensor_data()
 {
     add_repeating_timer_ms(1000, push_sensor_data_callback, this, &data_timer_);
-    add_repeating_timer_ms(10, collect_sensor_data_callback, this, &sensor_timer_);
+    add_repeating_timer_ms(MPU6050_SAMPLING_TIME * 1000, collect_sensor_data_callback, this, &sensor_timer_);
 }
 
 std::string communicator::get_sensor_data()
