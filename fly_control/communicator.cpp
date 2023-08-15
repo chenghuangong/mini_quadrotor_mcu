@@ -1,6 +1,13 @@
 #include "communicator.h"
 
-void perform_motor_pid_controll(communicator* comm)
+void pid_equation(float error, float p, float i, float d, float prev_error, float prev_iterm)
+{
+
+}
+
+
+// perform rate control
+void perform_motor_pid_control(communicator* comm)
 {
     quad_motor* motor = comm->motor_;
 
@@ -9,8 +16,6 @@ void perform_motor_pid_controll(communicator* comm)
         return;
     }
 
-
-    
     auto gyro_raw_data = comm->sensor_gyro_.get_sensor_raw_data();
     auto gyro_data = comm->sensor_gyro_.get_sensor_kalman_data();
 
@@ -24,10 +29,89 @@ void perform_motor_pid_controll(communicator* comm)
 
     double e_yaw = motor->p_yaw * gyro_z + motor->i_yaw * (yaw_value - motor->yaw_set_deg);
 
-    motor->update_input_error(0, e_roll, e_pitch, e_yaw);
+    motor->update_input_error(e_roll, e_pitch, e_yaw);
 
     comm->sampling_count++;
 }
+
+
+// perform rate control2
+void perform_motor_rate_control(communicator* comm, double roll_target = 0, double pitch_target = 0, double yaw_target = 0)
+{
+    quad_motor* motor = comm->motor_;
+
+    if (!motor->pid_on)
+    {
+        return;
+    }
+
+    auto rc = comm->sensor_gyro_.rate_ctrl;
+
+    // save previous error
+    rc.prev_err_roll = rc.err_roll;
+    rc.prev_err_pitch = rc.err_pitch;
+    rc.prev_err_yaw = rc.err_yaw;
+
+    // set target rate speed is zero
+    rc.err_roll = roll_target - rc.roll;
+    rc.err_pitch = pitch_target - rc.pitch;
+    rc.err_yaw = yaw_target - rc.yaw;
+
+
+    // start PID controller, yaw_set_deg is offset
+    double e_roll =  motor->p_roll * rc.err_roll + 
+                     motor->i_roll * ((rc.err_roll + rc.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME + rc.prev_integral_roll + 
+                     motor->d_roll * (rc.err_roll - rc.prev_err_roll) / MPU6050_SAMPLING_TIME;
+    
+    double e_pitch = motor->p_pitch * rc.err_pitch + 
+                     motor->i_pitch * ((rc.err_pitch + rc.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME + rc.prev_integral_pitch + 
+                     motor->d_pitch * (rc.err_pitch - rc.prev_err_pitch) / MPU6050_SAMPLING_TIME;
+
+    double e_yaw = motor->p_yaw * rc.err_yaw;
+
+    motor->update_input_error(e_roll, e_pitch, e_yaw);
+
+
+    // save previous integral value
+    rc.prev_integral_roll += motor->i_roll * ((rc.err_roll + rc.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME;
+    rc.prev_integral_pitch += motor->i_pitch * ((rc.err_pitch + rc.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME;
+
+    comm->sampling_count++;
+}
+
+
+
+void perform_motor_angle_control(communicator* comm, double roll_target = 0, double pitch_target = 0, double yaw_target = 0)
+{
+    quad_motor* motor = comm->motor_;
+
+    if (!motor->pid_on)
+    {
+        return;
+    }
+
+    auto gyro_data = comm->sensor_gyro_.get_sensor_kalman_data();
+
+    auto ac = comm->sensor_gyro_.angle_ctrl;
+
+    ac.prev_err_roll = ac.err_roll;
+    ac.prev_err_pitch = ac.err_pitch;
+
+    ac.err_roll = roll_target - gyro_data[0];
+    ac.err_pitch = pitch_target - gyro_data[1];
+
+    double roll_rate_target = motor->p_angle_roll * ac.err_roll + 
+                              motor->i_angle_roll * ((ac.prev_err_roll + ac.err_roll) / 2.0) * MPU6050_SAMPLING_TIME + ac.prev_integral_roll;
+
+    double pitch_rate_target = motor->p_angle_pitch * ac.err_pitch + 
+                               motor->i_angle_pitch * ((ac.prev_err_pitch + ac.err_pitch) / 2.0) * MPU6050_SAMPLING_TIME + ac.prev_integral_pitch;
+
+    ac.prev_integral_roll += motor->i_angle_roll * ((ac.err_roll + ac.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME;
+    ac.prev_integral_pitch += motor->i_angle_pitch * ((ac.err_pitch + ac.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME;
+
+    perform_motor_rate_control(comm, roll_rate_target, pitch_rate_target);  
+}
+
 
 bool push_sensor_data_callback(repeating_timer_t* rt)
 {
@@ -50,7 +134,9 @@ bool collect_sensor_data_callback(repeating_timer_t* rt)
         // apply PID to motor output
         if (comm->motor_->pid_on)
         {
-            perform_motor_pid_controll(comm);
+            // perform_motor_pid_control(comm);
+            // perform_motor_rate_control(comm);
+            perform_motor_angle_control(comm);
         }
     }
     return true;

@@ -218,6 +218,8 @@ void sensor_mpu6050::mpu6050_read_kalman()
     }
 
     apply_kalman_filter();
+
+    save_data_to_rate_control();
 }
 
 void sensor_mpu6050::apply_kalman_filter()
@@ -257,6 +259,18 @@ void sensor_mpu6050::apply_kalman_filter()
         kalman_filter_.kalman_angel_speed[i] = (kalman_filter_.kalman_angle[i] - kalman_filter_.kalman_previous_angel[i]) / MPU6050_SAMPLING_TIME;
         kalman_filter_.kalman_previous_angel[i] = kalman_filter_.kalman_angle[i];
     } 
+}
+
+
+void sensor_mpu6050::save_data_to_rate_control()
+{
+    rate_ctrl.prev_roll = rate_ctrl.roll;
+    rate_ctrl.prev_pitch = rate_ctrl.pitch;
+    rate_ctrl.prev_yaw = rate_ctrl.yaw;
+
+    rate_ctrl.roll = gyro_[0] / GYRO_SENSITIVITY;
+    rate_ctrl.pitch = gyro_[1] / GYRO_SENSITIVITY;
+    rate_ctrl.yaw = gyro_[2] / GYRO_SENSITIVITY;
 }
 
 

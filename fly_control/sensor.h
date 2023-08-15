@@ -83,6 +83,52 @@ struct mpu6050_kalman_data
 };
 
 
+struct rate_control_data
+{
+    // all variables are rate, not angle
+    double roll = 0;
+    double pitch = 0;
+    double yaw = 0;
+
+    double prev_roll = 0;
+    double prev_pitch = 0;
+    double prev_yaw = 0;
+
+    double err_roll = 0;
+    double err_pitch = 0;
+    double err_yaw = 0;
+
+    double prev_err_roll = 0;
+    double prev_err_pitch = 0;
+    double prev_err_yaw = 0;
+
+    double prev_integral_roll = 0;
+    double prev_integral_pitch = 0;
+    double prev_integral_yaw = 0;
+};
+
+
+struct angle_control_data
+{
+    // all variables are angle
+    double prev_roll = 0;
+    double prev_pitch = 0;
+    double prev_yaw = 0;
+
+    double err_roll = 0;
+    double err_pitch = 0;
+    double err_yaw = 0;
+
+    double prev_err_roll = 0;
+    double prev_err_pitch = 0;
+    double prev_err_yaw = 0;
+
+    double prev_integral_roll = 0;
+    double prev_integral_pitch = 0;
+    double prev_integral_yaw = 0;
+};
+
+
 class sensor_mpu6050
 {
 public:
@@ -100,6 +146,7 @@ private:
     void mpu6050_set_low_pass_filter();
     void mpu6050_read_raw();        // read raw and save, time interval 10ms
     void apply_kalman_filter();
+    void save_data_to_rate_control();
     bool perform_zero_point_calibration(); 
     
 private:
@@ -113,6 +160,10 @@ private:
     double xyz_acc_gyro_data_[7];   // acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, temperature, raw data with offset
     double xyz_gyro_speed_[3];      // gyro_x, gyro_y, gyro_z, directly calculate xyz rotation speed, uint °/s
     double rpy_kalman_data_[9];     // roll, pitch, yaw(integrate gyro_z), temperature, roll_speed, pitch_speed, yaw_speed, previous roll_speed, previous pitch_speed
+
+public:
+    rate_control_data rate_ctrl;
+    angle_control_data angle_ctrl;
 };
 
 

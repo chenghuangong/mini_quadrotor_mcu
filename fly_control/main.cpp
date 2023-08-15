@@ -22,10 +22,10 @@ const uint MOTOR_2 = MOTOR2_PIN;
 const uint MOTOR_3 = MOTOR3_PIN;
 const uint MOTOR_4 = MOTOR4_PIN;
 
-const double MOTOR_COE_1 = 0.96;
+const double MOTOR_COE_1 = 0.987;
 const double MOTOR_COE_2 = 1;
-const double MOTOR_COE_3 = 1;
-const double MOTOR_COE_4 = 0.96;
+const double MOTOR_COE_3 = 0.995;
+const double MOTOR_COE_4 = 0.992;
 
 const uint PWM_STEP = PWM_COUNTS / PWM_MOTOR_MAX;
 
@@ -344,6 +344,14 @@ void handle_cmd()
 // cmd = 0x10: set yaw i, 数据类型float
 // cmd = 0x11: set yaw d, 数据类型float
 
+// cmd = 0x12: 设定电池电量
+
+// cmd = 0x13: set roll angle p, 数据类型float
+// cmd = 0x14: set pitch angle p, 数据类型float
+
+// cmd = 0x15: set roll angle i, 数据类型float
+// cmd = 0x16: set pitch angle i, 数据类型float
+
 // AA BB CMD VALUE1 VALUE2 VALUE3 VALUE4 CHECKSUM
 void handle_cmd_v2()
 {
@@ -387,6 +395,11 @@ void handle_cmd_v2()
     case 0x0F: motors.p_yaw = get_float_from_cmd(cmd_char); break;
     case 0x10: motors.i_yaw = get_float_from_cmd(cmd_char); break;
     case 0x11: motors.d_yaw = get_float_from_cmd(cmd_char); break;
+    case 0x13: motors.p_angle_roll = get_float_from_cmd(cmd_char); break;
+    case 0x14: motors.p_angle_pitch = get_float_from_cmd(cmd_char); break;
+    case 0x15: motors.i_angle_roll = get_float_from_cmd(cmd_char); break;
+    case 0x16: motors.i_angle_pitch = get_float_from_cmd(cmd_char); break;
+
     default:
         break;
     }

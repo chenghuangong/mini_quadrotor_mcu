@@ -35,17 +35,19 @@ struct quad_motor
     
     // PID value
 
-    double p_roll = -0.1;
+    double p_roll = 0;
     double i_roll = 0;
     double d_roll = 0;
+    double p_angle_roll = 0;
+    double i_angle_roll = 0;
 
-    double p_pitch = -0.1;
+    double p_pitch = 0;
     double i_pitch = 0;
     double d_pitch = 0;
+    double p_angle_pitch = 0;
+    double i_angle_pitch = 0;
 
-    double p_yaw = 0.05;
-    // 加入yaw的积分的效果不好
-    // double i_yaw = 0.001;
+    double p_yaw = 0;
     double i_yaw = 0;
     double d_yaw = 0;
 
@@ -71,13 +73,13 @@ struct quad_motor
         
     }
 
-    void update_input_error(double ethrottle, double eroll, double epitch, double eyaw)
+    void update_input_error(double eroll, double epitch, double eyaw)
     {
         // error is offset
-        total_output_pid_[0] = total_output_pid_[0] + ethrottle - eroll - epitch + eyaw;
-        total_output_pid_[1] = total_output_pid_[1] + ethrottle - eroll + epitch - eyaw;
-        total_output_pid_[2] = total_output_pid_[2] + ethrottle + eroll + epitch + eyaw;
-        total_output_pid_[3] = total_output_pid_[3] + ethrottle + eroll - epitch - eyaw;
+        total_output_pid_[0] = throttle - eroll - epitch + eyaw;
+        total_output_pid_[1] = throttle - eroll + epitch - eyaw;
+        total_output_pid_[2] = throttle + eroll + epitch + eyaw;
+        total_output_pid_[3] = throttle + eroll - epitch - eyaw;
         // convert double output to int
         for (size_t i = 0; i < 4; i++)
         {
