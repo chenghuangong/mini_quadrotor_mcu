@@ -16,6 +16,7 @@ public:
 public:
     void connect_to_server();
     bool write(const std::string& msg);
+    bool write(const uint8_t* msg, uint32_t length);
 
 private:
     void init_dev();

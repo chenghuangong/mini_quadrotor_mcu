@@ -2,6 +2,7 @@
 #include <pico/stdlib.h>
 #include <hardware/uart.h>
 #include <hardware/pwm.h>
+#include <hardware/timer.h>
 #include <string.h>
 #include "communicator.h"
 
@@ -14,7 +15,6 @@
 #define SERVER_ADDR "192.168.31.17"
 #define SERVER_PORT 12800
 #define CMD_BUFFER_SIZE 128
-
 
 // define motor mosfet pin
 const uint MOTOR_1 = MOTOR1_PIN;
@@ -50,69 +50,23 @@ void handle_cmd();
 void handle_cmd_v2();
 void print_char_to_number(unsigned char* data, size_t length);
 
+
+// PID function
+void perform_motor_rate_control(communicator* comm, double roll_target = 0, double pitch_target = 0, double yaw_target = 0);
+void perform_motor_angle_control(communicator* comm, double roll_target = 0, double pitch_target = 0, double yaw_target = 0);
+
+
 // timer callback
-bool send_motor_data_callback(repeating_timer_t *rt)
-{
-    // printf("{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[%d,%d,%d,%d]}", 
-    //     motors.total_output_[0],
-    //     motors.total_output_[1],
-    //     motors.total_output_[2],
-    //     motors.total_output_[3]);
-    std::string msg = "{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[" + 
-        std::to_string(motors.total_output_[0]) + "," + 
-        std::to_string(motors.total_output_[1]) + "," + 
-        std::to_string(motors.total_output_[2]) + "," + 
-        std::to_string(motors.total_output_[3]) + "]}";
-    uart_puts(uart0, msg.c_str());
-    return true;    
-}
+bool send_motor_data_callback(repeating_timer_t *rt);
+bool heart_beat_callback(repeating_timer_t *rt);
+bool send_all_data_callback(repeating_timer_t *rt);
+bool output_motor_thrust_callback(repeating_timer_t* rt);
 
-bool heart_beat_callback(repeating_timer_t *rt)
-{
-    auto comm = static_cast<communicator*>(rt->user_data);
-
-    std::string msg = "{\"msg_type\":\"heart_beat\",\"dev_type\":\"drone\"}";
-    uart_puts(uart0, msg.c_str());
-
-    // printf("The sampling count is: %d\nThe motor count is: %d\n", comm->sampling_count, motor_set_count);
-
-    return true;    
-}
-
-bool output_motor_thrust_callback(repeating_timer_t* rt)
-{
-    output_motor_thrust(motors);
-    // motor_set_count++;
-    return true;
-}
 
 int main()
 {
     stdio_init_all();
     sleep_ms(10000);
-    // printf("start\n");
-    // start push gyro data to server
-    // use pid controll motor
-    communicator comm{SERVER_ADDR, SERVER_PORT};
-    // printf("initialize communicator\n");
-    comm.start_push_sensor_data();
-    // printf("start communicator\n");
-
-    // initialize motor
-    motors.motor1_ = MOTOR_1;
-    motors.motor2_ = MOTOR_2;
-    motors.motor3_ = MOTOR_3;
-    motors.motor4_ = MOTOR_4;
-    initialize_motor(motors);
-    // printf("initialize motor\n");
-    comm.motor_ = &motors;
-
-    // start data timer
-    repeating_timer motor_data_timer;
-    add_repeating_timer_ms(899, &send_motor_data_callback, nullptr, &motor_data_timer);
-    repeating_timer heart_beat_timer;
-    add_repeating_timer_ms(5001, &heart_beat_callback, &comm, &heart_beat_timer);
-    // printf("start send data\n");
 
     // set uart recv callback, uart0 has already initialized in communicator, so just set callback
     // irq_set_exclusive_handler(UART0_IRQ, on_uart_rx);
@@ -120,20 +74,35 @@ int main()
     irq_set_enabled(UART0_IRQ, true);
     uart_set_irq_enables(uart0, true, false);
 
+    // initialize communicator and sensor
+    communicator comm{SERVER_ADDR, SERVER_PORT};
+
+    // initialize motor
+    motors.motor1_ = MOTOR_1;
+    motors.motor2_ = MOTOR_2;
+    motors.motor3_ = MOTOR_3;
+    motors.motor4_ = MOTOR_4;
+    initialize_motor(motors);
+    comm.motor_ = &motors;
+
+
+    // read sensor data and apply pid to output
     repeating_timer motor_output_timer;
-    add_repeating_timer_ms(4, &output_motor_thrust_callback, nullptr, &motor_output_timer);
+    add_repeating_timer_ms(4, &output_motor_thrust_callback, &comm, &motor_output_timer);
+    // send data host
+    repeating_timer all_data_timer;
+    add_repeating_timer_ms(1000, &send_all_data_callback, &comm, &all_data_timer);
+    
 
     while (1)
     {
         tight_loop_contents();
-        // output_motor_thrust(motors);
-        // sleep_ms(4);
     }
 
     return 0;
 }
 
-
+// =======================initialize motor=======================
 void initialize_motor(quad_motor& motors)
 {
     gpio_set_function(motors.motor1_, GPIO_FUNC_PWM);
@@ -163,8 +132,6 @@ void initialize_motor(quad_motor& motors)
     pwm_init(slice_num_4, &config, true);
 }
 
-
-
 void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 {
     // add thrust offset and original thrust value, save to temp thrust value
@@ -187,12 +154,6 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 void output_motor_thrust(quad_motor& motors)
 {
     // convert duty cycle to linear, from 0 - PWM_MOTOR_MAX
-
-    // pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * motors.total_output_[0]);
-    // pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * motors.total_output_[1]);
-    // pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * motors.total_output_[2]);
-    // pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * motors.total_output_[3]);
-
     pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * PWM_STEP * MOTOR_COE_1);
     pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * PWM_STEP * MOTOR_COE_2);
     pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * PWM_STEP * MOTOR_COE_3);
@@ -200,6 +161,7 @@ void output_motor_thrust(quad_motor& motors)
 }
 
 
+// =======================handle command=======================
 void on_uart_rx_v2()
 {
     // printf("uart_rx called\n");
@@ -230,7 +192,6 @@ void on_uart_rx_v2()
         cmd_char_buffer_length = 0;
     }
 }
-
 
 void check_buffer_cmd()
 {
@@ -318,7 +279,6 @@ void handle_cmd()
     set_motor_thrust_v2(motors, thrust);
     cmd_buffer.clear();
 }
-
 
 // command format should be changed to 
 // format total 8 bytes
@@ -413,4 +373,204 @@ void print_char_to_number(unsigned char* data, size_t length)
         printf("%d ", data[i]);
     }
     printf("\n");
+}
+
+
+// =======================PID control=======================
+void perform_motor_rate_control(communicator* comm, double roll_target, double pitch_target, double yaw_target)
+{
+    quad_motor* motor = comm->motor_;
+
+    if (!motor->pid_on)
+    {
+        return;
+    }
+
+    auto rc = comm->sensor_gyro_.rate_ctrl;
+
+    // save previous error
+    rc.prev_err_roll = rc.err_roll;
+    rc.prev_err_pitch = rc.err_pitch;
+    rc.prev_err_yaw = rc.err_yaw;
+
+    // set target rate speed is zero
+    rc.err_roll = roll_target - rc.roll;
+    rc.err_pitch = pitch_target - rc.pitch;
+    rc.err_yaw = yaw_target - rc.yaw;
+
+
+    // start PID controller, yaw_set_deg is offset
+    double e_roll =  motor->p_roll * rc.err_roll + 
+                     motor->i_roll * ((rc.err_roll + rc.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME + rc.prev_integral_roll + 
+                     motor->d_roll * (rc.err_roll - rc.prev_err_roll) / MPU6050_SAMPLING_TIME;
+    
+    double e_pitch = motor->p_pitch * rc.err_pitch + 
+                     motor->i_pitch * ((rc.err_pitch + rc.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME + rc.prev_integral_pitch + 
+                     motor->d_pitch * (rc.err_pitch - rc.prev_err_pitch) / MPU6050_SAMPLING_TIME;
+
+    double e_yaw = motor->p_yaw * rc.err_yaw;
+
+    motor->update_input_error(e_roll, e_pitch, e_yaw);
+
+
+    // save previous integral value
+    rc.prev_integral_roll += motor->i_roll * ((rc.err_roll + rc.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME;
+    rc.prev_integral_pitch += motor->i_pitch * ((rc.err_pitch + rc.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME;
+
+    comm->sampling_count++;
+}
+
+void perform_motor_angle_control(communicator* comm, double roll_target, double pitch_target, double yaw_target)
+{
+    quad_motor* motor = comm->motor_;
+
+    if (!motor->pid_on)
+    {
+        return;
+    }
+
+    auto gyro_data = comm->sensor_gyro_.get_sensor_kalman_data();
+
+    auto ac = comm->sensor_gyro_.angle_ctrl;
+
+    ac.prev_err_roll = ac.err_roll;
+    ac.prev_err_pitch = ac.err_pitch;
+
+    ac.err_roll = roll_target - gyro_data[0];
+    ac.err_pitch = pitch_target - gyro_data[1];
+
+    double roll_rate_target = motor->p_angle_roll * ac.err_roll + 
+                              motor->i_angle_roll * ((ac.prev_err_roll + ac.err_roll) / 2.0) * MPU6050_SAMPLING_TIME + ac.prev_integral_roll;
+
+    double pitch_rate_target = motor->p_angle_pitch * ac.err_pitch + 
+                               motor->i_angle_pitch * ((ac.prev_err_pitch + ac.err_pitch) / 2.0) * MPU6050_SAMPLING_TIME + ac.prev_integral_pitch;
+
+    ac.prev_integral_roll += motor->i_angle_roll * ((ac.err_roll + ac.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME;
+    ac.prev_integral_pitch += motor->i_angle_pitch * ((ac.err_pitch + ac.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME;
+
+    perform_motor_rate_control(comm, roll_rate_target, pitch_rate_target);  
+}
+
+
+// =======================timer callback=======================
+bool send_motor_data_callback(repeating_timer_t *rt)
+{   
+    // cost 4ms 
+    // absolute_time_t start_time = get_absolute_time();
+    // printf("{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[%d,%d,%d,%d]}", 
+    //     motors.total_output_[0],
+    //     motors.total_output_[1],
+    //     motors.total_output_[2],
+    //     motors.total_output_[3]);
+    std::string msg = "{\"msg_type\":\"data\",\"dev_type\":\"drone\",\"source\":\"motor_thrust\",\"value\":[" + 
+        std::to_string(motors.total_output_[0]) + "," + 
+        std::to_string(motors.total_output_[1]) + "," + 
+        std::to_string(motors.total_output_[2]) + "," + 
+        std::to_string(motors.total_output_[3]) + "]}";
+    uart_puts(uart0, msg.c_str());
+
+    // absolute_time_t end_time = get_absolute_time();
+    // printf("time cost: %dus\n", static_cast<uint32_t>(absolute_time_diff_us(start_time, end_time)));
+    return true;    
+}
+
+bool heart_beat_callback(repeating_timer_t *rt)
+{
+    auto comm = static_cast<communicator*>(rt->user_data);
+
+    std::string msg = "{\"msg_type\":\"heart_beat\",\"dev_type\":\"drone\"}";
+    uart_puts(uart0, msg.c_str());
+    // printf("The sampling count is: %d\nThe motor count is: %d\n", comm->sampling_count, motor_set_count);
+    return true;    
+}
+
+bool send_all_data_callback(repeating_timer_t *rt)
+{
+    // time cost 1.6ms, no motor data
+    // time cost 3ms, with motor data
+    // 发送时间的速度决定步骤在uart上
+    // absolute_time_t start_time = get_absolute_time();
+    auto comm = static_cast<communicator*>(rt->user_data);
+
+    auto gyro_data = comm->sensor_gyro_.get_sensor_kalman_data();       // kalman滤波的数据
+    auto gyro_raw_data = comm->sensor_gyro_.get_sensor_raw_data();      // 6个原始数据
+    auto pressure_data = comm->sensor_pressure_.get_sensor_data();      // 压力数据
+
+    uint8_t frame[65];
+    // head 4bytes
+    frame[0] = 0xAA;
+    frame[1] = 0xBB;
+    frame[2] = 0x00; // cmd type
+    frame[3] = 0x41; // length, 65bytes
+
+    size_t insert_pos = 4;
+    float temp = 0;
+
+    // insert kalman data, 12bytes
+    for (size_t i = 0; i < 3; i++)
+    {
+        temp = gyro_data[i];
+        memcpy(frame + insert_pos, &temp, sizeof(temp));
+        insert_pos += 4;
+    }
+
+    // insert gyro raw, 24bytes
+    for (size_t i = 0; i < 6; i++)
+    {
+        temp = gyro_raw_data[i];
+        memcpy(frame + insert_pos, &temp, sizeof(temp));
+        insert_pos += 4;
+    }
+
+    // insert temperature, 1byte
+    temp = gyro_data[3];
+    memcpy(frame + insert_pos, &temp, sizeof(temp));
+    insert_pos += 4;
+    // insert pressure, 1byte
+    temp = pressure_data[1];
+    memcpy(frame + insert_pos, &temp, sizeof(temp));
+    insert_pos += 4;
+
+    // insert motor data, 16bytes
+    for (size_t i = 0; i < 4; i++)
+    {
+        temp = motors.total_output_[i];
+        memcpy(frame + insert_pos, &temp, sizeof(temp));
+        insert_pos += 4;
+    }
+    
+    // insert check sum and send to uart
+    uint16_t check_sum = 0;
+    for (size_t i = 0; i < insert_pos; i++)
+    {
+        // also write to uart
+        uart_putc(uart0, frame[i]); 
+        check_sum += frame[i];
+    }
+
+    frame[insert_pos] = static_cast<uint8_t>(check_sum & 0xFF);
+    uart_putc(uart0, frame[insert_pos]);
+
+    // absolute_time_t end_time = get_absolute_time();
+    // printf("time cost: %dus\n", static_cast<uint32_t>(absolute_time_diff_us(start_time, end_time)));
+
+    return true;
+}
+
+bool output_motor_thrust_callback(repeating_timer_t* rt)
+{
+    // read sensor data
+    auto comm = static_cast<communicator*>(rt->user_data);
+    comm->sensor_gyro_.mpu6050_read_kalman();
+
+    // apply PID to motor output
+    if (comm->motor_->pid_on)
+    {
+        // perform_motor_pid_control(comm);
+        // perform_motor_rate_control(comm);
+        perform_motor_angle_control(comm);
+    }
+
+    output_motor_thrust(motors);
+    return true;
 }

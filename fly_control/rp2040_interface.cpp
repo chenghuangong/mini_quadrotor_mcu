@@ -38,3 +38,11 @@ bool esp01s::write(const std::string& msg)
     uart_puts(UART_ID, msg.c_str());
     return true;
 }
+
+bool esp01s::write(const uint8_t* msg, uint32_t length)
+{
+    // uart_puts(UART_ID, msg);
+
+    uart_putc(UART_ID, 1);
+    return true;
+}
