@@ -68,11 +68,6 @@ int main()
     stdio_init_all();
     sleep_ms(10000);
 
-    // set uart recv callback, uart0 has already initialized in communicator, so just set callback
-    // irq_set_exclusive_handler(UART0_IRQ, on_uart_rx);
-    irq_set_exclusive_handler(UART0_IRQ, on_uart_rx_v2);
-    irq_set_enabled(UART0_IRQ, true);
-    uart_set_irq_enables(uart0, true, false);
 
     // initialize communicator and sensor
     communicator comm{SERVER_ADDR, SERVER_PORT};
@@ -86,12 +81,19 @@ int main()
     comm.motor_ = &motors;
 
 
+    // set uart recv callback, uart0 has already initialized in communicator, so just set callback
+    // irq_set_exclusive_handler(UART0_IRQ, on_uart_rx);
+    irq_set_exclusive_handler(UART0_IRQ, on_uart_rx_v2);
+    irq_set_enabled(UART0_IRQ, true);
+    uart_set_irq_enables(uart0, true, false);
+
+
     // read sensor data and apply pid to output
     repeating_timer motor_output_timer;
     add_repeating_timer_ms(4, &output_motor_thrust_callback, &comm, &motor_output_timer);
     // send data host
     repeating_timer all_data_timer;
-    add_repeating_timer_ms(1000, &send_all_data_callback, &comm, &all_data_timer);
+    add_repeating_timer_ms(202, &send_all_data_callback, &comm, &all_data_timer);
     
 
     while (1)
@@ -487,7 +489,9 @@ bool heart_beat_callback(repeating_timer_t *rt)
 bool send_all_data_callback(repeating_timer_t *rt)
 {
     // time cost 1.6ms, no motor data
-    // time cost 3ms, with motor data
+    // time cost 3.0ms, with motor data
+    // time cost 1.6ms, with motor data (baudrate = 230400), set data transfer frequency to 5Hz, time cost will be 10ms
+
     // 发送时间的速度决定步骤在uart上
     // absolute_time_t start_time = get_absolute_time();
     auto comm = static_cast<communicator*>(rt->user_data);
@@ -522,11 +526,11 @@ bool send_all_data_callback(repeating_timer_t *rt)
         insert_pos += 4;
     }
 
-    // insert temperature, 1byte
+    // insert temperature, 4byte
     temp = gyro_data[3];
     memcpy(frame + insert_pos, &temp, sizeof(temp));
     insert_pos += 4;
-    // insert pressure, 1byte
+    // insert pressure, 4byte
     temp = pressure_data[1];
     memcpy(frame + insert_pos, &temp, sizeof(temp));
     insert_pos += 4;

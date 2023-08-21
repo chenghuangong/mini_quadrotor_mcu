@@ -20,17 +20,24 @@ void esp01s::connect_to_server()
 {
     // 使用AT指令, 延时一定要加够，不然会出错
     uart_puts(UART_ID, "AT\r\n");
-    sleep_ms(500);
+    sleep_ms(100);
     std::string target = "AT+CIPSTART=\"TCP\",\"" + addr_ + "\"," + std::to_string(port_) + "\r\n";
     uart_puts(UART_ID, target.c_str());
-    sleep_ms(500);
+    sleep_ms(100);
+
+    // set uart speed to 230400, the setting will be wrote to flash
+    // it still works after reboot
+    target = "AT+UART=230400,8,1,0,0\r\n";
+    uart_puts(UART_ID, target.c_str());
+    sleep_ms(100);
+
     // 开启透传模式
     target = "AT+CIPMODE=1\r\n";
     uart_puts(UART_ID, target.c_str());
-    sleep_ms(500);
+    sleep_ms(100);
     target = "AT+CIPSEND\r\n";
     uart_puts(UART_ID, target.c_str());
-    sleep_ms(500);
+    sleep_ms(100);
 }
 
 bool esp01s::write(const std::string& msg)

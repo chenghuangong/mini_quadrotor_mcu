@@ -4,7 +4,8 @@
 // =======================================================RP2040=======================================================
 // for uart
 #define UART_ID uart0
-#define UART_BAUD_RATE 115200
+// #define UART_BAUD_RATE 115200
+#define UART_BAUD_RATE 230400
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
 
