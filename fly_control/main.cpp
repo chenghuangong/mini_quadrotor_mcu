@@ -3,6 +3,7 @@
 #include <hardware/uart.h>
 #include <hardware/pwm.h>
 #include <hardware/timer.h>
+#include <hardware/adc.h>
 #include <string.h>
 #include "communicator.h"
 
@@ -47,6 +48,7 @@ void check_buffer_cmd();
 void handle_cmd();
 void handle_cmd_v2();
 void print_char_to_number(unsigned char* data, size_t length);
+void read_battery_level();
 
 
 // PID function
@@ -77,6 +79,11 @@ int main()
     motors.motor4_ = MOTOR_4;
     initialize_motor(motors);
     comm.motor_ = &motors;
+
+
+    // initialize adc
+    adc_init();
+    adc_gpio_init(PICO_ADC0);
 
 
     // set uart recv callback, uart0 has already initialized in communicator, so just set callback
@@ -498,12 +505,16 @@ bool send_all_data_callback(repeating_timer_t *rt)
     auto gyro_raw_data = comm->sensor_gyro_.get_sensor_raw_data();      // 6个原始数据
     auto pressure_data = comm->sensor_pressure_.get_sensor_data();      // 压力数据
 
-    uint8_t frame[65];
+    // read battery level
+    read_battery_level();
+
+
+    uint8_t frame[69];
     // head 4bytes
     frame[0] = 0xAA;
     frame[1] = 0xBB;
     frame[2] = 0x00; // cmd type
-    frame[3] = 0x41; // length, 65bytes
+    frame[3] = 0x45; // length, 69bytes
 
     size_t insert_pos = 4;
     float temp = 0;
@@ -540,7 +551,12 @@ bool send_all_data_callback(repeating_timer_t *rt)
         memcpy(frame + insert_pos, &temp, sizeof(temp));
         insert_pos += 4;
     }
-    
+
+    // insert battery level, 4bytes
+    temp = motors.battery_level;
+    memcpy(frame + insert_pos, &temp, sizeof(temp));
+    insert_pos += 4;
+
     // insert check sum and send to uart
     uint16_t check_sum = 0;
     for (size_t i = 0; i < insert_pos; i++)
@@ -575,4 +591,16 @@ bool output_motor_thrust_callback(repeating_timer_t* rt)
 
     output_motor_thrust(motors);
     return true;
+}
+
+void read_battery_level()
+{
+    double adc_value = 0;
+    double battery_value = 0;
+
+    adc_select_input(0);
+    adc_value = adc_read() * (3.3 / 4096);  // convert to voltage
+
+    battery_value = adc_value / 0.6;
+    motors.battery_level = battery_value;
 }

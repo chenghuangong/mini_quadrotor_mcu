@@ -16,6 +16,10 @@
 
 // status indicator led
 #define LED_PIN PICO_DEFAULT_LED_PIN
+
+// ADC
+#define PICO_ADC0 26
+
 // =======================================================RP2040======================================================= 
 
 
