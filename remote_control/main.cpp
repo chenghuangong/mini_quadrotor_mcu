@@ -77,16 +77,20 @@ int main()
     // see datasheet for more information on function select
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-    sleep_ms(500);
-    uart_puts(UART_ID, "AT\r\n");
-    sleep_ms(500);
+    sleep_ms(100);    
     // 连接到服务器
     uart_puts(UART_ID, "AT+CIPSTART=\"TCP\",\"192.168.31.17\",12800\r\n");
+    sleep_ms(1500);
+    uart_puts(UART_ID, "AT+CIPSTART=\"TCP\",\"192.168.31.17\",12800\r\n");
+    sleep_ms(1500);
+
     // 开启透传模式
     std::string target = "AT+CIPMODE=1\r\n";
+    uart_puts(UART_ID, target.c_str());
     sleep_ms(500);
     uart_puts(UART_ID, target.c_str());
     sleep_ms(500);
+
     target = "AT+CIPSEND\r\n";
     uart_puts(UART_ID, target.c_str());
     sleep_ms(500);

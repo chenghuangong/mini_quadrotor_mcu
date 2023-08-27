@@ -22,12 +22,10 @@ const uint MOTOR_2 = MOTOR2_PIN;
 const uint MOTOR_3 = MOTOR3_PIN;
 const uint MOTOR_4 = MOTOR4_PIN;
 
-const double MOTOR_COE_1 = 0.987;
+const double MOTOR_COE_1 = 1;
 const double MOTOR_COE_2 = 1;
-const double MOTOR_COE_3 = 0.995;
-const double MOTOR_COE_4 = 0.992;
-
-const uint PWM_STEP = PWM_COUNTS / PWM_MOTOR_MAX;
+const double MOTOR_COE_3 = 1;
+const double MOTOR_COE_4 = 1;
 
 quad_motor motors;
 std::string cmd_buffer;
@@ -93,7 +91,7 @@ int main()
     add_repeating_timer_ms(4, &output_motor_thrust_callback, &comm, &motor_output_timer);
     // send data host
     repeating_timer all_data_timer;
-    add_repeating_timer_ms(202, &send_all_data_callback, &comm, &all_data_timer);
+    add_repeating_timer_ms(501, &send_all_data_callback, &comm, &all_data_timer);
     
 
     while (1)
@@ -119,8 +117,8 @@ void initialize_motor(quad_motor& motors)
 
     // get pwm config
     pwm_config config = pwm_get_default_config();
-    pwm_config_set_wrap(&config, 0xffff);   // set duty cycle
-    pwm_config_set_clkdiv(&config, 40.f);   // set 125Mhz / 40 = 3.125MHz
+    pwm_config_set_wrap(&config, PWM_COUNTS);                 // set duty cycle
+    pwm_config_set_clkdiv(&config, PWM_CLOCK_DIV);            // set 125Mhz / 40 = 3.125MHz
     
     // set duty cycle
     pwm_set_gpio_level(motors.motor1_, 0);
@@ -156,10 +154,10 @@ void set_motor_thrust_v2(quad_motor& motors, int* thrust)
 void output_motor_thrust(quad_motor& motors)
 {
     // convert duty cycle to linear, from 0 - PWM_MOTOR_MAX
-    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * PWM_STEP * MOTOR_COE_1);
-    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * PWM_STEP * MOTOR_COE_2);
-    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * PWM_STEP * MOTOR_COE_3);
-    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * PWM_STEP * MOTOR_COE_4);
+    pwm_set_gpio_level(motors.motor1_, motors.total_output_[0] * MOTOR_COE_1);
+    pwm_set_gpio_level(motors.motor2_, motors.total_output_[1] * MOTOR_COE_2);
+    pwm_set_gpio_level(motors.motor3_, motors.total_output_[2] * MOTOR_COE_3);
+    pwm_set_gpio_level(motors.motor4_, motors.total_output_[3] * MOTOR_COE_4);
 }
 
 
@@ -329,14 +327,14 @@ void handle_cmd_v2()
         motors.pid_on = false;
         for (size_t i = 0; i < 4; i++)
         {
-            thrust[i] = pow(cmd_char[3 + i], 2) / PWM_STEP;  // CONVERT TO 0 - PWM_MOTOR_MAX
+            thrust[i] = cmd_char[3 + i] * 15;  // CONVERT TO 0 - PWM_MOTOR_MAX
         }
         set_motor_thrust_v2(motors, thrust);
         break;
     case 0x02:
         // set throttle
         motors.pid_on = true;
-        motors.throttle = pow(cmd_char[3], 2) / PWM_STEP;
+        motors.throttle = cmd_char[3] * 15;
         motors.convert_to_total_output();
     break;
     case 0x03:break;

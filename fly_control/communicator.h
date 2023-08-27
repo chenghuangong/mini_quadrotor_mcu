@@ -4,9 +4,9 @@
 #include "rp2040_interface.h"
 #include "sensor.h"
 
-#define PWM_COUNTS 65535
-// #define PWM_MOTOR_MAX 2000
-#define PWM_MOTOR_MAX 65000
+#define PWM_COUNTS 4000
+#define PWM_MOTOR_MAX 3950
+#define PWM_CLOCK_DIV 1
 
 
 struct quad_motor
