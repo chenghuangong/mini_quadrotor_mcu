@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
+# set(PICO_BOARD "fly_control_rp2040")
+
 # pull in SDK 相当于将pico_skd_import.cmake文件在这里进行展开，和cpp的include类似
 # 在pico_sdk_import中有PICO_SDK_PATH，这个我们在cmake的config environment 中进行设置，可以使用相对或者绝对的地址，导入SDK工具包pico-sdk
 include(pico_sdk_import.cmake)

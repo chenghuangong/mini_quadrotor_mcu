@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <pico/stdlib.h>
 #include <hardware/pwm.h>
+#include <pico.h>
 
 /*
 test half output thrust
@@ -13,7 +14,7 @@ const uint MOTOR_3 = 12;
 const uint MOTOR_4 = 13;
 
 // define duty cycle, half thrust
-const int duty = 3000;
+const int duty = 500;
 const int wrap_value = 4000;
 const int clock_div = 1;
 
@@ -53,9 +54,9 @@ int main()
     pwm_init(slice_num_4, &config, true);
     
 
-    // turn_motor_on_sequence(MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
+    turn_motor_on_sequence(MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
     // turn_all_motor_on(MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4, duty);
-    turn_all_motor_on_changed_value(MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4, 4, duty, 40);
+    // turn_all_motor_on_changed_value(MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4, 4, duty, 40);
 
     return 0;
 }

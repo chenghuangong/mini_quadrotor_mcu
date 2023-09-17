@@ -8,9 +8,9 @@
 #include "communicator.h"
 
 // define motor as same as mpu6050 direction
-#define MOTOR1_PIN 13
+#define MOTOR1_PIN 11
 #define MOTOR2_PIN 10
-#define MOTOR3_PIN 11
+#define MOTOR3_PIN 13
 #define MOTOR4_PIN 12
 
 #define SERVER_ADDR "192.168.31.17"
@@ -601,6 +601,7 @@ void read_battery_level()
     adc_select_input(0);
     adc_value = adc_read() * (3.3 / 4096);  // convert to voltage
 
-    battery_value = adc_value / 0.6;
+    // voltage divider R1/R2 = 1:1
+    battery_value = adc_value * 2;
     motors.battery_level = battery_value;
 }
