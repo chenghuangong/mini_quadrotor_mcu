@@ -1,0 +1,7 @@
+add_executable(single_motor_balance main.cpp)
+
+target_link_libraries(single_motor_balance pico_stdlib hardware_pwm hardware_adc)
+
+pico_add_extra_outputs(single_motor_balance)
+
+pico_enable_stdio_uart(single_motor_balance 1)

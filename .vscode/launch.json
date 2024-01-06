@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Pico Debug",
+            "cwd": "${workspaceRoot}",
+            "executable": "${command:cmake.launchTargetPath}",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            // This may need to be "arm-none-eabi-gdb" for some previous builds(changed)
+            "gdbPath" : "arm-none-eabi-gdb",
+            // "gdbPath" : "E:/files/Software/gcc-arm/11.2 2022.02/bin/arm-none-eabi-gdb.exe",
+            "device": "RP2040",
+            "configFiles": [
+                // This may need to be "interface/picoprobe.cfg" for some previous builds(changed)
+                // "C:/Users/gch66/Desktop/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/scripts/interface/cmsis-dap.cfg",
+                // "C:/Users/gch66/Desktop/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/scripts/target/rp2040.cfg"
+                // "interface/cmsis-dap.cfg",
+                // "target/rp2040.cfg"
+                "E:/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/scripts/interface/cmsis-dap.cfg",
+                "E:/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/scripts/target/rp2040.cfg"
+            ],
+            "svdFile": "${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/rp2040.svd",
+            "runToEntryPoint": "main",
+            // Work around for stopping at main on restart
+            "postRestartCommands": [
+                "break main",
+                "continue"
+            ],
+            // OpenOCD dir(changed)
+            // "searchDir": ["C:/Users/gch66/Desktop/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/scripts"]
+            "searchDir": ["E:/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/scripts"]
+        }
+    ]
+}

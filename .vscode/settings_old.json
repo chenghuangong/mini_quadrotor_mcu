@@ -1,29 +1,6 @@
 {
-    // These settings tweaks to the cmake plugin will ensure
-    // that you debug using cortex-debug instead of trying to launch
-    // a Pico binary on the host
-
-    // "cmake.statusbar.advanced": {
-    //     "debug": {
-    //         "visibility": "hidden"
-    //     },
-    //     "launch": {
-    //         "visibility": "hidden"
-    //     },
-    //     "build": {
-    //         "visibility": "hidden"
-    //     },
-    //     "buildTarget": {
-    //         "visibility": "hidden"
-    //     }
-    // },
-    "cmake.buildBeforeRun": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "cortex-debug.openocdPath": "E:/files/Project/raspberry_pico/pico-tool/openocd-x64-standalone/openocd.exe",
-
     "files.associations": {
-        "stdlib.h": "c",
-        "DA-AD.C": "cpp",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -65,12 +42,8 @@
         "ostream": "cpp",
         "stdexcept": "cpp",
         "streambuf": "cpp",
-        "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "map": "cpp",
-        "printf.h": "c",
-        "pico.h": "c",
-        "list": "cpp",
-        "irq.h": "c"
+        "cinttypes": "cpp",
+        "clocks.h": "c"
     }
 }
