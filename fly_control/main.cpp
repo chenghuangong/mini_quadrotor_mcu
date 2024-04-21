@@ -23,7 +23,7 @@ const uint MOTOR_2 = MOTOR2_PIN;
 const uint MOTOR_3 = MOTOR3_PIN;
 const uint MOTOR_4 = MOTOR4_PIN;
 
-const double MOTOR_COE_1 = 1;
+const double MOTOR_COE_1 = 1.05;
 const double MOTOR_COE_2 = 1;
 const double MOTOR_COE_3 = 1;
 const double MOTOR_COE_4 = 1;
@@ -344,9 +344,9 @@ void handle_cmd_v2()
         motors.throttle = cmd_char[3] * 15;
         motors.convert_to_total_output();
     break;
-    case 0x03:break;
-    case 0x04:break;
-    case 0x05:break;
+    case 0x03: motors.roll_set_deg = get_float_from_cmd(cmd_char); break;
+    case 0x04: motors.pitch_set_deg = get_float_from_cmd(cmd_char); break;
+    case 0x05: motors.yaw_set_deg = get_float_from_cmd(cmd_char); break;
     case 0x06:break;
     case 0x07:break;
     case 0x08:break;
@@ -419,7 +419,6 @@ void perform_motor_rate_control(communicator* comm, double roll_target, double p
 
     motor->update_input_error(e_roll, e_pitch, e_yaw);
 
-
     // save previous integral value
     rc.prev_integral_roll += motor->i_roll * ((rc.err_roll + rc.prev_err_roll) / 2.0) * MPU6050_SAMPLING_TIME;
     rc.prev_integral_pitch += motor->i_pitch * ((rc.err_pitch + rc.prev_err_pitch) / 2.0) * MPU6050_SAMPLING_TIME;
@@ -445,7 +444,7 @@ void perform_motor_angle_control(communicator* comm, double roll_target, double 
 
     ac.err_roll = roll_target - gyro_data[0];
     ac.err_pitch = pitch_target - gyro_data[1];
-
+    
     double roll_rate_target = motor->p_angle_roll * ac.err_roll + 
                               motor->i_angle_roll * ((ac.prev_err_roll + ac.err_roll) / 2.0) * MPU6050_SAMPLING_TIME + ac.prev_integral_roll;
 
@@ -586,7 +585,7 @@ bool output_motor_thrust_callback(repeating_timer_t* rt)
     {
         // perform_motor_pid_control(comm);
         // perform_motor_rate_control(comm);
-        perform_motor_angle_control(comm);
+        perform_motor_angle_control(comm, comm->motor_->roll_set_deg, comm->motor_->pitch_set_deg, comm->motor_->yaw_set_deg);
     }
 
     output_motor_thrust(motors);

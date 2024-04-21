@@ -158,13 +158,16 @@ void sensor_mpu6050::init_mpu6050()
 }
 
 
+
+
 void sensor_mpu6050::mpu6050_set_low_pass_filter()
 {
-    // enable low pass filter
+    // enable low pass filter, bandwidth = 10hz
     uint8_t buf1[] = {0x1A, 0x05};
     i2c_write_blocking(i2c_default, MPU6050_ADDR, buf1, 2, false);
 
     // set sensitivity to 65.5
+    // 256Hz
     uint8_t buf2[] = {0x1B, 0x08};
     i2c_write_blocking(i2c_default, MPU6050_ADDR, buf2, 2, false);  
 }

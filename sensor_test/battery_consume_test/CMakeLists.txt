@@ -1,0 +1,7 @@
+add_executable(battery_consume_test main.cpp)
+
+target_link_libraries(battery_consume_test pico_stdlib hardware_pwm hardware_adc)
+
+pico_add_extra_outputs(battery_consume_test)
+
+pico_enable_stdio_uart(battery_consume_test 1)

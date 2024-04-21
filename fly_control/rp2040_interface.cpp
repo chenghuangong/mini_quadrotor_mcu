@@ -18,20 +18,33 @@ void esp01s::init_dev()
 
 void esp01s::connect_to_server()
 {
+    std::string target2;
+    // set route
+    // std::string target2 = "AT+CWMODE=1\r\n";
+    // uart_puts(UART_ID, target2.c_str());
+    // sleep_ms(1500);
+
+    // target2 = "AT+CWJAP_DEF=\"MYWIFI\",\"15104074028\"\r\n";
+    // uart_puts(UART_ID, target2.c_str());
+    // sleep_ms(5000);
+
+    // set uart speed to 230400, the setting will be wrote to flash
+    // it still works after reboot
+    // target2 = "AT+UART=115200,8,1,0,0\r\n";
+    // target = "AT+UART=230400,8,1,0,0\r\n";
+    // uart_puts(UART_ID, target2.c_str());
+    // sleep_ms(100);
+
+
     // 使用AT指令, 延时一定要加够，不然会出错
     // uart_puts(UART_ID, "AT\r\n");
-    // sleep_ms(100);
+    sleep_ms(1000);
     std::string target = "AT+CIPSTART=\"TCP\",\"" + addr_ + "\"," + std::to_string(port_) + "\r\n";
     uart_puts(UART_ID, target.c_str());
     sleep_ms(1500);
     uart_puts(UART_ID, target.c_str());
     sleep_ms(2000);
 
-    // set uart speed to 230400, the setting will be wrote to flash
-    // it still works after reboot
-    // target = "AT+UART=115200,8,1,0,0\r\n";
-    // uart_puts(UART_ID, target.c_str());
-    // sleep_ms(100);
 
     // 开启透传模式
     target = "AT+CIPMODE=1\r\n";

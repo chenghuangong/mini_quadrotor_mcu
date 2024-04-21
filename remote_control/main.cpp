@@ -137,7 +137,7 @@ int main()
 
         // 4. check esp01s
         
-        sleep_ms(100);
+        sleep_ms(200);
     }
 }
 

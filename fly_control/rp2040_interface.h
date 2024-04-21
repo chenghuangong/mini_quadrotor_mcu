@@ -38,6 +38,7 @@ public:
 
     void default_i2c_init()
     {
+        // 400kbit / s = 50kbytes / s = 50byte / ms
         perform_i2c_init(400 * 1000);
     }
 

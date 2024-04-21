@@ -19,6 +19,7 @@ pico_sdk_init()
 add_subdirectory(sensor_test)
 add_subdirectory(fly_control)
 add_subdirectory(remote_control)
+add_subdirectory(fly_contorl_v1.0)
 
 # 添加编译器选项
 add_compile_options(-Wall
