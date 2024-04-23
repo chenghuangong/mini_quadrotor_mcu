@@ -1,2 +1,3 @@
 add_subdirectory(board_test)
 add_subdirectory(hardware_test)
+add_subdirectory(fly_control)
