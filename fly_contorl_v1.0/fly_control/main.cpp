@@ -10,9 +10,8 @@ int main()
     task_handler_t handler;
     task_handler_initialize(&handler);
 
-    add_task(&handler, &task_test);
-
-    run_task_handler(&handler);
+    // add_task(&handler, &task_test);
+    // run_task_handler(&handler);
 
     while (true)
     {

@@ -15,11 +15,31 @@ struct sensor_controller_t
     repeating_timer timer;
 
     bool is_data_rdy = false;
-    double data[2];
+    double* rpy = nullptr;
+    double* rpy_rate = nullptr;
 
     // only used to notify task handler data arrived
     task_handler_t* handler = nullptr;
 };
+
+
+uint8_t sensor_controller_initialize(sensor_controller_t* ctrl)
+{
+    // directly copy the pointer
+    ctrl->rpy = ctrl->dev.rpy_k;
+    ctrl->rpy_rate = ctrl->dev.gyro_deg_data;
+
+    // initialzie sensors
+    bmi088_initialize(&ctrl->dev, i2c_default);
+    bmi088_start_acc_sensor(&ctrl->dev);
+    sleep_ms(10);
+    bmi088_config config = bmi088_get_drone_config();
+    bmi088_write_config(&ctrl->dev, &config);
+    bmi088_read_range(&ctrl->dev);
+    bmi088_get_gyro_offset(&ctrl->dev);
+
+    return 0;
+}
 
 bool sensor_contorller_callback(repeating_timer_t* t)
 {
@@ -27,8 +47,6 @@ bool sensor_contorller_callback(repeating_timer_t* t)
 
     // read data from devs
     bmi088_get_rpy_from_kalman(&ctrl->dev);
-    ctrl->data[0] = ctrl->dev.rpy_k[0];
-    ctrl->data[1] = ctrl->dev.rpy_k[1];
     
     // call task handler function to handle data
     if (ctrl->handler)
@@ -40,16 +58,10 @@ bool sensor_contorller_callback(repeating_timer_t* t)
 
 uint8_t run_sensor_controller(sensor_controller_t* ctrl)
 {
-    // initialize dev
-    bmi088_initialize(&ctrl->dev, i2c_default);
-    bmi088_start_acc_sensor(&ctrl->dev);
-    sleep_ms(10);
-    bmi088_config config = bmi088_get_drone_config();
-    bmi088_write_config(&ctrl->dev, &config);
-    bmi088_read_range(&ctrl->dev);
-    bmi088_get_gyro_offset(&ctrl->dev);
+    sensor_controller_initialize(ctrl);
 
     add_repeating_timer_ms(1000 / SENSOR_DATA_ACQUSITION_FREQUENCY , sensor_contorller_callback, ctrl, &ctrl->timer);
+    
     return 0;
 }
 

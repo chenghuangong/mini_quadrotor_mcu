@@ -21,6 +21,8 @@ struct task_handler_t
 
     // sensor list
     sensor_controller_t sensor_ctrl;
+    pid_contorller_t    pid_ctrl;
+    comm_controller_t*  comm_ctrl = &comm_controller;
 
     // set interlock
     bool is_protection_triggered = false;
@@ -44,6 +46,19 @@ bool task_handler_callback(repeating_timer_t* t)
 }
 
 
+/*
+* copy data ptr to some read only modules
+*/
+uint8_t task_handler_copy_data_ptr(task_handler_t* handler)
+{
+    // copy data to communication controller
+    handler->comm_ctrl->rpy_ptr = handler->sensor_ctrl.rpy;
+    handler->comm_ctrl->rpy_rate_ptr = handler->sensor_ctrl.rpy_rate;
+    handler->comm_ctrl->motor_thrust_ptr = handler->pid_ctrl.output_thrust;
+    return 0;
+}
+
+
 uint8_t task_handler_initialize(task_handler_t* handler)
 {
     // initialzie I2C
@@ -51,15 +66,24 @@ uint8_t task_handler_initialize(task_handler_t* handler)
     gpio_set_function(FLY_CTRL_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(FLY_CTRL_I2C_SCL, GPIO_FUNC_I2C);
 
-
     // transfer handler pointer to controller
     // when controller receive data, automaticly notify handler
     handler->sensor_ctrl.handler = handler;
-
+    handler->comm_ctrl->handler = handler;
 
     // run sensor
     run_sensor_controller(&handler->sensor_ctrl);
     sleep_ms(10);
+
+    // run pid controller
+    run_pid_controller(&handler->pid_ctrl);
+    sleep_ms(10);
+
+    // run communicator
+    run_comm_controller(handler->comm_ctrl);
+    sleep_ms(10);
+    task_handler_copy_data_ptr(handler);
+
     return 0;
 }
 
@@ -109,6 +133,7 @@ uint8_t drone_guardian(task_handler_t* handler)
 
     if (handler->is_protection_triggered)
     {
+        // TODO
         // stop motor
         return 0;
     }
@@ -121,15 +146,23 @@ uint8_t drone_guardian(task_handler_t* handler)
 */
 uint8_t sensor_data_handler(task_handler_t* handler)
 {
+    // 1. stop drone if tilt more than 45deg
     drone_guardian(handler);
 
-    // transfer data to PID controller
-
-    if(handler->temp++ == 20)
+    // 2. transfer data to PID controller
+    for (size_t i = 0; i < 3; i++)
     {
-        printf("roll = %.2f, pitch = %.2f\n", handler->sensor_ctrl.data[0], handler->sensor_ctrl.data[1]);
-        handler->temp = 0;
+        handler->pid_ctrl.rpy[i] = handler->sensor_ctrl.rpy[i];
+        // handler->pid_ctrl.previous_rpy_rate[i] = handler->pid_ctrl.current_rpy_rate[i];
+        handler->pid_ctrl.current_rpy_rate[i] = handler->sensor_ctrl.rpy_rate[i];
     }
+
+    // debug code
+    // if(handler->temp++ == 20)
+    // {
+    //     printf("roll = %.2f, pitch = %.2f\n", handler->sensor_ctrl.rpy[0], handler->sensor_ctrl.rpy[1]);
+    //     handler->temp = 0;
+    // }
     return 0;
 }
 

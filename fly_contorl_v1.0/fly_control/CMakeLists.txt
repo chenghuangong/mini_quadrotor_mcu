@@ -1,5 +1,5 @@
 add_executable(fly_control_v1.0 config.hpp 
-public_func.hpp status_controller.hpp pid_contorller.hpp sensor_controller.hpp task_handler.hpp main.cpp)
+public_func.hpp status_controller.hpp comm_controller.hpp pid_contorller.hpp sensor_controller.hpp task_handler.hpp main.cpp)
 
 target_include_directories(fly_control_v1.0 PRIVATE "E:/files/Project/raspberry_pico/rp2040-module-lib/modules/gpio")
 target_include_directories(fly_control_v1.0 PRIVATE "E:/files/Project/raspberry_pico/rp2040-module-lib/modules/motion")
