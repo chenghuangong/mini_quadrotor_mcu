@@ -2,44 +2,7 @@
 #define PID_CONTROLLER_H_
 
 #include "PWM_MOTOR_CTRL.hpp"
-
-// run angle loop at 100Hz
-#define PID_ANGLE_MODE_FREQUENCY    100
-// run rate loop at 200Hz
-#define PID_RATE_MODE_FREQUENCY     200
-// run pwm at 31.25kHz
-#define PID_PWM_MOTOR_COUNTS        4000
-#define PID_PWM_MOTOR_CLK_DIV       1
-
-// angle loop PID value setup
-#define PID_ANGLE_LOOP_ROLL_P       0
-#define PID_ANGLE_LOOP_PITCH_P      0
-#define PID_ANGLE_LOOP_YAW_P        0
-
-#define PID_ANGLE_LOOP_ROLL_I       0
-#define PID_ANGLE_LOOP_PITCH_I      0
-#define PID_ANGLE_LOOP_YAW_I        0
-
-#define PID_ANGLE_LOOP_ROLL_D       0
-#define PID_ANGLE_LOOP_PITCH_D      0
-#define PID_ANGLE_LOOP_YAW_D        0
-
-// rate loop PID value setup
-#define PID_RATE_LOOP_ROLL_P        0
-#define PID_RATE_LOOP_PITCH_P       0.0005
-#define PID_RATE_LOOP_YAW_P         0
-
-#define PID_RATE_LOOP_ROLL_I        0
-#define PID_RATE_LOOP_PITCH_I       0
-#define PID_RATE_LOOP_YAW_I         0
-
-#define PID_RATE_LOOP_ROLL_D        0
-#define PID_RATE_LOOP_PITCH_D       0
-#define PID_RATE_LOOP_YAW_D         0
-
-#define PID_ANGLE_SAMPLEING_TIME    0.01
-#define PID_RATE_SAMPLEING_TIME     0.005
-
+#include "config.hpp"
 
 /*
 * define the pid object
@@ -75,12 +38,8 @@ struct pid_contorller_t
     double current_rpy_rate[3];             // current rate, roll, pitch, yaw
 
     // pid value setting
-    double angle_loop_p[3];                 // angle loop
-    double angle_loop_i[3];                 // angle loop
-    double angle_loop_d[3];                 // angle loop
-    double rate_loop_p[3];                  // rate loop proportion for roll pitch yaw
-    double rate_loop_i[3];                  // rate loop integral for roll pitch yaw
-    double rate_loop_d[3];                  // rate loop differential for roll pitch yaw
+    double angle_rpy_pid[3][3];             // angle_rpy_pid[0] = angle_roll_p, angle_roll_i, angle_roll_d
+    double rate_rpy_pid[3][3];              // rate_rpy_pid[0] = rate_roll_p, rate_roll_i, rate_roll_d
 
 
     // angle target, set by user
@@ -156,31 +115,6 @@ void pid_controller_pid_update(pid_obj* pid, double* measured)
 
 uint8_t pid_controller_initialize(pid_contorller_t* ctrl)
 {
-    // set pid values
-    ctrl->angle_loop_p[0] = PID_ANGLE_LOOP_ROLL_P;
-    ctrl->angle_loop_p[1] = PID_ANGLE_LOOP_PITCH_P;
-    ctrl->angle_loop_p[2] = PID_ANGLE_LOOP_YAW_P;
-
-    ctrl->angle_loop_i[0] = PID_ANGLE_LOOP_ROLL_I;
-    ctrl->angle_loop_i[1] = PID_ANGLE_LOOP_PITCH_I;
-    ctrl->angle_loop_i[2] = PID_ANGLE_LOOP_YAW_I;
-
-    ctrl->angle_loop_d[0] = PID_ANGLE_LOOP_ROLL_D;
-    ctrl->angle_loop_d[1] = PID_ANGLE_LOOP_PITCH_D;
-    ctrl->angle_loop_d[2] = PID_ANGLE_LOOP_YAW_D;
-
-    ctrl->rate_loop_p[0] = PID_RATE_LOOP_ROLL_P;
-    ctrl->rate_loop_p[1] = PID_RATE_LOOP_PITCH_P;
-    ctrl->rate_loop_p[2] = PID_RATE_LOOP_YAW_P;
-
-    ctrl->rate_loop_i[0] = PID_RATE_LOOP_ROLL_I;
-    ctrl->rate_loop_i[1] = PID_RATE_LOOP_PITCH_I;
-    ctrl->rate_loop_i[2] = PID_RATE_LOOP_YAW_I;
-
-    ctrl->rate_loop_d[0] = PID_RATE_LOOP_ROLL_D;
-    ctrl->rate_loop_d[1] = PID_RATE_LOOP_PITCH_D;
-    ctrl->rate_loop_d[2] = PID_RATE_LOOP_YAW_D;
-
     // initialize array
     for (size_t i = 0; i < 3; i++)
     {
@@ -199,9 +133,9 @@ uint8_t pid_controller_initialize(pid_contorller_t* ctrl)
     for (size_t i = 0; i < 3; i++)
     {
         pid_controller_pid_obj_initialize(&ctrl->rpy_angle_pid[i], ctrl->rpy_angle_target[i], 
-                                           ctrl->angle_loop_p[i], ctrl->angle_loop_i[i], ctrl->angle_loop_d[i], PID_ANGLE_SAMPLEING_TIME);
+                                           ctrl->angle_rpy_pid[i][0], ctrl->angle_rpy_pid[i][1], ctrl->angle_rpy_pid[i][2], PID_ANGLE_SAMPLEING_TIME);
         pid_controller_pid_obj_initialize(&ctrl->rpy_rate_pid[i], ctrl->rpy_rate_target[i], 
-                                           ctrl->rate_loop_p[i], ctrl->rate_loop_i[i], ctrl->rate_loop_d[i], PID_RATE_SAMPLEING_TIME);
+                                           ctrl->rate_rpy_pid[i][0], ctrl->rate_rpy_pid[i][1], ctrl->rate_rpy_pid[i][2], PID_RATE_SAMPLEING_TIME);
     }
     
     // initialize motor thrust

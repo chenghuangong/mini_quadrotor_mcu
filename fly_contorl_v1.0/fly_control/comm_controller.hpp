@@ -119,12 +119,14 @@ void comm_controller_rx_callback()
 
     uint8_t temp_rx_len = comm_controller.rx_len;
 
-    while (uart_is_readable(comm_controller.esp8266.uart_handle) && comm_controller.rx_len < 256) 
+    // read data until no data in the rx fifo
+    while (uart_is_readable(comm_controller.esp8266.uart_handle) 
+           && comm_controller.rx_len < 256) 
     {
         comm_controller.rx_buf[comm_controller.rx_len++] = uart_getc(comm_controller.esp8266.uart_handle);
     }
 
-    // no data received
+    // if no data received
     if (temp_rx_len == comm_controller.rx_len) return;
 
     // check buffer length, if more than 1byte, maybe contain a command

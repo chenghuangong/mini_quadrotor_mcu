@@ -6,6 +6,7 @@
 int main()
 {
     stdio_init_all();
+    sleep_ms(10000);
 
     task_handler_t handler;
     task_handler_initialize(&handler);

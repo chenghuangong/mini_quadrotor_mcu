@@ -36,10 +36,10 @@ uint8_t sensor_controller_initialize(sensor_controller_t* ctrl)
     bmi088_config config = bmi088_get_drone_config();
     bmi088_write_config(&ctrl->dev, &config);
     bmi088_read_range(&ctrl->dev);
-    bmi088_get_gyro_offset(&ctrl->dev);
 
     return 0;
 }
+
 
 bool sensor_contorller_callback(repeating_timer_t* t)
 {
@@ -58,7 +58,7 @@ bool sensor_contorller_callback(repeating_timer_t* t)
 
 uint8_t run_sensor_controller(sensor_controller_t* ctrl)
 {
-    sensor_controller_initialize(ctrl);
+    // sensor_controller_initialize(ctrl);
 
     add_repeating_timer_ms(1000 / SENSOR_DATA_ACQUSITION_FREQUENCY , sensor_contorller_callback, ctrl, &ctrl->timer);
     

@@ -7,6 +7,7 @@
 #include "pid_contorller.hpp"
 #include "comm_controller.hpp"
 #include "status_controller.hpp"
+#include "flash_controller.hpp"
 
 // uint Hz
 #define TASK_RUNNING_SPEED 1
@@ -23,6 +24,8 @@ struct task_handler_t
     sensor_controller_t sensor_ctrl;
     pid_contorller_t    pid_ctrl;
     comm_controller_t*  comm_ctrl = &comm_controller;
+    config_controller_t config_ctrl;
+
 
     // set interlock
     bool is_protection_triggered = false;
@@ -59,9 +62,58 @@ uint8_t task_handler_copy_data_ptr(task_handler_t* handler)
 }
 
 
+/*
+* this is sensor calibration data, not register config
+* maybe should also add sensor register config
+* load config data to sensor or calibrate by sensor
+*/
+uint8_t task_handler_load_sensor_config(task_handler_t* handler)
+{
+    // check config
+    if (handler->config_ctrl.is_initialized)
+    {
+        // read gyro offset
+        printf("read gyro zero point from flash...\n");
+        for (size_t i = 0; i < 3; i++)
+        {
+            handler->sensor_ctrl.dev.gyro_offset[i] = handler->config_ctrl.config.bmi088_gyro_offset[i];
+        }
+    }
+    else
+    {
+        printf("read gyro zero point from sensor...\n");
+        bmi088_get_gyro_offset(&handler->sensor_ctrl.dev);
+        for (size_t i = 0; i < 3; i++)
+        {
+            handler->config_ctrl.config.bmi088_gyro_offset[i] = handler->sensor_ctrl.dev.gyro_offset[i];
+        }
+    }
+    return 0;
+}
+
+
+/*
+* load pid value to pid controller
+*/
+uint8_t task_handler_load_pid_config(task_handler_t* handler)
+{
+    printf("read pid value from flash...\n");
+    for (size_t i = 0; i < 3; i++)
+    {
+        for (size_t j = 0; j < 3; j++)
+        {
+            handler->pid_ctrl.angle_rpy_pid[i][j] = handler->config_ctrl.config.angle_rpy_pid[i][j];
+            handler->pid_ctrl.rate_rpy_pid[i][j] = handler->config_ctrl.config.rate_rpy_pid[i][j];
+        }
+    }
+    return 0;
+}
+
+
+
 uint8_t task_handler_initialize(task_handler_t* handler)
 {
-    // initialzie I2C
+    // initialize I2C
     i2c_init(FLY_CTRL_I2C_INTS, FLY_CTRL_I2C_BAUDRATE);
     gpio_set_function(FLY_CTRL_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(FLY_CTRL_I2C_SCL, GPIO_FUNC_I2C);
@@ -71,15 +123,30 @@ uint8_t task_handler_initialize(task_handler_t* handler)
     handler->sensor_ctrl.handler = handler;
     handler->comm_ctrl->handler = handler;
 
-    // run sensor
-    run_sensor_controller(&handler->sensor_ctrl);
-    sleep_ms(10);
+    // run flash
+    run_config_controller(&handler->config_ctrl);
 
-    // run pid controller
+    // just initialize sensor, run it later, for calibration purpose
+    sensor_controller_initialize(&handler->sensor_ctrl);
+    sleep_ms(10);
+    
+    // load config
+    task_handler_load_sensor_config(handler);
+    task_handler_load_pid_config(handler);
+    config_controller_write_config(&handler->config_ctrl);
+    config_controller_print_config(&handler->config_ctrl);
+
+
+
+    
+    // run sensor after read offset from flash or by sensor
+    run_sensor_controller(&handler->sensor_ctrl);
+
+    // run pid controller (should check)
     run_pid_controller(&handler->pid_ctrl);
     sleep_ms(10);
 
-    // run communicator
+    // run communicator (should check)
     run_comm_controller(handler->comm_ctrl);
     sleep_ms(10);
     task_handler_copy_data_ptr(handler);
